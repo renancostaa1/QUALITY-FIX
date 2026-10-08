@@ -1,0 +1,16 @@
+{
+  "name": "quality-fix-analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "dev": "node --watch --env-file=.env server.js",
+    "check": "node --env-file=.env scripts/check-connection.js"
+  },
+  "dependencies": {
+    "compression": "^1.8.2",
+    "express": "^5.2.1",
+    "mssql": "^12.7.4"
+  }
+}

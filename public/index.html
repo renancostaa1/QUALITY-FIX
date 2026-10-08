@@ -1,0 +1,1819 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Quality Fix Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --surface-0:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f1efe9;
+    --ink-primary:#0b0b0b; --ink-secondary:#52514e; --ink-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --accent:#2a78d6; --accent-soft:rgba(42,120,214,0.12); --accent-ink:#ffffff;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --good-bg:rgba(12,163,12,0.10); --warning-bg:rgba(250,178,25,0.16); --serious-bg:rgba(236,131,90,0.14); --critical-bg:rgba(208,59,59,0.10);
+    --seq-250:#86b6ef; --seq-350:#5598e7; --seq-450:#2a78d6; --seq-550:#1c5cab; --seq-600:#184f95;
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 6px 20px rgba(11,11,11,0.05);
+    --radius-card:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --surface-0:#0d0d0d; --surface-1:#1a1a19; --surface-2:#141311;
+      --ink-primary:#ffffff; --ink-secondary:#c3c2b7; --ink-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --accent:#3987e5; --accent-soft:rgba(57,135,229,0.16); --accent-ink:#ffffff;
+      --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+      --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#e66767;
+      --good-bg:rgba(12,163,12,0.16); --warning-bg:rgba(250,178,25,0.14); --serious-bg:rgba(236,131,90,0.16); --critical-bg:rgba(230,103,103,0.16);
+      --seq-250:#5598e7; --seq-350:#2a78d6; --seq-450:#1c5cab; --seq-550:#184f95; --seq-600:#0d366b;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --surface-0:#0d0d0d; --surface-1:#1a1a19; --surface-2:#141311;
+    --ink-primary:#ffffff; --ink-secondary:#c3c2b7; --ink-muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+    --accent:#3987e5; --accent-soft:rgba(57,135,229,0.16); --accent-ink:#ffffff;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#e66767;
+    --good-bg:rgba(12,163,12,0.16); --warning-bg:rgba(250,178,25,0.14); --serious-bg:rgba(236,131,90,0.16); --critical-bg:rgba(230,103,103,0.16);
+    --seq-250:#5598e7; --seq-350:#2a78d6; --seq-450:#1c5cab; --seq-550:#184f95; --seq-600:#0d366b;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.35);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--surface-0); color:var(--ink-primary);
+    font-family:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .num{ font-variant-numeric:tabular-nums; }
+  h1,h2,h3{ text-wrap:balance; margin:0; }
+  button{ font-family:inherit; }
+  ::selection{ background:var(--accent-soft); }
+
+  .app{ display:flex; min-height:100vh; }
+
+  /* Sidebar */
+  .sidebar{
+    width:246px; flex:0 0 auto; background:var(--surface-2);
+    border-right:1px solid var(--border); display:flex; flex-direction:column;
+    padding:18px 12px; position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding:6px 8px 18px; }
+  .brand-badge{ width:34px; height:34px; border-radius:9px; background:var(--accent); display:flex; align-items:center; justify-content:center; flex:0 0 auto; box-shadow:var(--shadow); }
+  .brand-name{ font-weight:800; font-size:15px; letter-spacing:-0.01em; line-height:1.1; }
+  .brand-sub{ font-family:"IBM Plex Mono",monospace; font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-muted); margin-top:2px; }
+
+  nav.navtree{ display:flex; flex-direction:column; gap:14px; margin-top:6px; }
+  .nav-group-label{ font-size:10.5px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--ink-muted); padding:0 10px; margin-bottom:4px; }
+  .nav-item{
+    display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+    padding:8px 10px; border-radius:9px; border:none; background:transparent;
+    color:var(--ink-secondary); font-size:13.5px; font-weight:600; cursor:pointer;
+    transition:background .12s ease, color .12s ease;
+  }
+  .nav-item:hover{ background:var(--border); color:var(--ink-primary); }
+  .nav-item.active{ background:var(--accent); color:var(--accent-ink); }
+  .nav-item .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.55; flex:0 0 auto; }
+  .nav-item .label{ flex:1; }
+  .nav-badge{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600;
+    padding:1px 6px; border-radius:20px; background:var(--critical-bg); color:var(--critical);
+  }
+  .nav-item.active .nav-badge{ background:rgba(255,255,255,0.25); color:var(--accent-ink); }
+
+  .sidebar-foot{ margin-top:auto; padding:12px 10px 4px; border-top:1px solid var(--border); margin-top:18px; }
+  .sidebar-foot button{
+    width:100%; background:none; border:1px dashed var(--border); border-radius:9px;
+    color:var(--ink-muted); font-size:11px; padding:8px; cursor:pointer; line-height:1.4;
+  }
+  .sidebar-foot button:hover{ color:var(--ink-secondary); border-color:var(--ink-muted); }
+
+  /* Main */
+  .main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
+  .topbar{
+    position:sticky; top:0; z-index:5; background:var(--surface-0);
+    border-bottom:1px solid var(--border); padding:16px 28px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .topbar-title{ font-size:19px; font-weight:800; letter-spacing:-0.01em; }
+  .topbar-desc{ font-size:12.5px; color:var(--ink-muted); margin-top:2px; }
+  .topbar-right{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .live-chip{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-muted); }
+  .live-dot{ width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 0 3px var(--good-bg); }
+  .refresh-btn{
+    display:flex; align-items:center; gap:6px; border:1px solid var(--border); background:var(--surface-1);
+    color:var(--ink-secondary); font-size:12px; font-weight:600; padding:7px 12px; border-radius:9px; cursor:pointer;
+  }
+  .refresh-btn:hover{ color:var(--ink-primary); border-color:var(--ink-muted); }
+
+  .loading{ padding:28px; color:var(--ink-muted); font-size:13px; }
+  .banner{ margin:16px 28px 0; padding:10px 14px; border-radius:10px; font-size:12.5px; color:var(--critical); background:var(--critical-bg); border:1px solid var(--border); }
+  #content{ padding:22px 28px 60px; flex:1; }
+  .pane{ display:none; flex-direction:column; gap:20px; }
+  .pane.active{ display:flex; }
+
+  .kpi-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .stat-tile{
+    background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius-card);
+    padding:16px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:8px; min-width:0;
+  }
+  .stat-label{ font-size:11.5px; font-weight:700; letter-spacing:0.03em; color:var(--ink-muted); text-transform:uppercase; }
+  .stat-value-row{ display:flex; align-items:baseline; gap:8px; justify-content:space-between; }
+  .stat-value{ font-size:25px; font-weight:800; letter-spacing:-0.02em; }
+  .stat-sub{ font-size:12px; color:var(--ink-secondary); display:flex; align-items:center; gap:6px; }
+  .delta{ font-size:11.5px; font-weight:700; padding:2px 7px; border-radius:20px; display:inline-flex; align-items:center; gap:3px; }
+  .delta.good{ color:var(--good); background:var(--good-bg); }
+  .delta.critical{ color:var(--critical); background:var(--critical-bg); }
+  .delta.neutral{ color:var(--ink-secondary); background:var(--border); }
+  .spark{ display:block; margin-top:2px; }
+
+  .grid-2{ display:grid; grid-template-columns:1.5fr 1fr; gap:16px; align-items:start; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; align-items:start; }
+
+  .card{
+    background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius-card);
+    box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column; min-width:0;
+  }
+  .card-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:16px 18px 4px; }
+  .card-title{ font-size:14px; font-weight:700; }
+  .card-subtitle{ font-size:11.5px; color:var(--ink-muted); margin-top:2px; }
+  .card-toggle{
+    border:1px solid var(--border); background:var(--surface-2); color:var(--ink-secondary);
+    font-size:11px; font-weight:600; padding:5px 10px; border-radius:7px; cursor:pointer; white-space:nowrap;
+  }
+  .card-toggle:hover{ color:var(--ink-primary); }
+  .card-body{ padding:8px 18px 18px; overflow-x:auto; }
+  .legend-row{ display:flex; flex-wrap:wrap; gap:12px; padding:0 18px 14px; }
+  .legend-chip{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-secondary); }
+  .legend-swatch{ width:9px; height:9px; border-radius:3px; flex:0 0 auto; }
+
+  svg.chart{ display:block; overflow:visible; width:100%; height:auto; }
+  .chart-tooltip{
+    position:absolute; pointer-events:none; background:var(--ink-primary); color:var(--surface-1);
+    font-size:11.5px; padding:7px 10px; border-radius:8px; box-shadow:var(--shadow); z-index:20;
+    white-space:nowrap; transform:translate(-50%,-115%); font-family:"IBM Plex Mono",monospace; line-height:1.5;
+  }
+  .chart-tooltip b{ font-family:"Manrope",sans-serif; }
+  .chart-wrap{ position:relative; }
+
+  table.data-table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:640px; }
+  table.data-table th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted);
+    font-weight:700; padding:9px 10px; border-bottom:1px solid var(--grid); white-space:nowrap;
+  }
+  table.data-table td{ padding:10px 10px; border-bottom:1px solid var(--grid); color:var(--ink-secondary); white-space:nowrap; }
+  table.data-table td.strong{ color:var(--ink-primary); font-weight:600; }
+  table.data-table tr:last-child td{ border-bottom:none; }
+  table.data-table tr:hover td{ background:var(--surface-2); }
+
+  .pill{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; }
+  .pill::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .pill.good{ color:var(--good); background:var(--good-bg); }
+  .pill.warning{ color:#8a5a00; background:var(--warning-bg); }
+  :root:not([data-theme="light"]) .pill.warning{ color:var(--warning); }
+  :root[data-theme="dark"] .pill.warning{ color:var(--warning); }
+  .pill.serious{ color:var(--serious); background:var(--serious-bg); }
+  .pill.critical{ color:var(--critical); background:var(--critical-bg); }
+  .pill.neutral{ color:var(--ink-secondary); background:var(--border); }
+
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .section-head h2{ font-size:16px; font-weight:800; }
+  .section-head p{ font-size:12.5px; color:var(--ink-muted); margin:2px 0 0; }
+  .table-note{ font-size:11px; color:var(--ink-muted); padding:10px 18px 0; }
+
+  .schema-panel{ display:none; font-size:11.5px; color:var(--ink-secondary); line-height:1.6; padding:10px; background:var(--surface-2); border-radius:9px; margin-top:8px; }
+  .schema-panel.open{ display:block; }
+  .schema-panel code{ font-family:"IBM Plex Mono",monospace; color:var(--accent); font-size:10.5px; }
+
+  @media (max-width: 980px){
+    .sidebar{ position:static; height:auto; width:100%; flex-direction:row; overflow-x:auto; align-items:center; padding:10px 12px; }
+    .brand{ padding:0 10px 0 0; }
+    nav.navtree{ flex-direction:row; margin-top:0; gap:4px; }
+    .nav-group-label{ display:none; }
+    .sidebar-foot{ display:none; }
+    .app{ flex-direction:column; }
+    .grid-2, .grid-3{ grid-template-columns:1fr; }
+    .kpi-row{ grid-template-columns:repeat(2,1fr); }
+    #content{ padding:18px 16px 48px; }
+    .topbar{ padding:14px 16px; }
+  }
+</style>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Quality Fix</div>
+        <div class="brand-sub">Analytics Diário</div>
+      </div>
+    </div>
+    <nav class="navtree">
+      <div>
+        <div class="nav-group-label">Performance</div>
+        <button class="nav-item active" data-pane="faturamento"><span class="dot"></span><span class="label">Faturamento</span></button>
+      </div>
+      <div>
+        <div class="nav-group-label">Produtividade</div>
+        <button class="nav-item" data-pane="pedidos"><span class="dot"></span><span class="label">Pedidos</span></button>
+        <button class="nav-item" data-pane="vendedor"><span class="dot"></span><span class="label">Vendedor</span></button>
+      </div>
+      <div>
+        <div class="nav-group-label">Pendências</div>
+        <button class="nav-item" data-pane="cotacoes"><span class="dot"></span><span class="label">Cotações</span><span class="nav-badge" id="badge-cotacoes">–</span></button>
+        <button class="nav-item" data-pane="entregas"><span class="dot"></span><span class="label">Entregas</span><span class="nav-badge" id="badge-entregas">–</span></button>
+      </div>
+      <div>
+        <div class="nav-group-label">Clientes</div>
+        <button class="nav-item" data-pane="clientes"><span class="dot"></span><span class="label">Inativos</span><span class="nav-badge" id="badge-clientes">–</span></button>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="schema-toggle">Dados mockados · modelados a partir de VW_CLIENTES, pedidos e VW_PRODUTOS. Clique para ver o mapeamento.</button>
+      <div class="schema-panel" id="schema-panel"></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Faturamento</div>
+        <div class="topbar-desc" id="topbar-desc">Receita faturada, evolução diária e composição por região e divisão</div>
+      </div>
+      <div class="topbar-right">
+        <div class="live-chip" id="live-chip"><span class="live-dot"></span><span id="live-text">—</span></div>
+        <button class="refresh-btn" id="refresh-btn">↻ Nova amostra</button>
+      </div>
+    </div>
+    <div class="banner" id="banner" role="alert" style="display:none"></div>
+    <div class="loading" id="loading" style="display:none">Carregando dados do ERP… a primeira consulta pode levar alguns segundos.</div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------------------------------------------------------- utils */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let rand = mulberry32(20260925);
+const ri = (a,b)=> Math.floor(rand()*(b-a+1))+a;
+const rf = (a,b)=> rand()*(b-a)+a;
+const pick = (arr)=> arr[Math.floor(rand()*arr.length)];
+function weightedPick(items, w){
+  const total = items.reduce((s,it)=>s+w(it),0);
+  let r = rand()*total;
+  for(const it of items){ r -= w(it); if(r<=0) return it; }
+  return items[items.length-1];
+}
+function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
+
+let HOJE = new Date(2026,8,25);
+let DADOS_REAIS = false;
+let LIMITES = {produtos:true, motivoPendencia:true};
+let REGRAS = {diasLimiteEntrega:null, janelaInativosMeses:null, diasParaInativar:90};
+function addDays(d,n){ const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function dayOffset(date){ return Math.round((HOJE - date)/86400000); }
+const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MON = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function fmtDateShort(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); }
+function fmtDateFull(d){ return String(d.getDate()).padStart(2,'0')+' '+MON[d.getMonth()]+' '+d.getFullYear(); }
+function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+function daysInMonth(d){ return endOfMonth(d).getDate(); }
+
+const nfBRL0 = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const nfBRL2 = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2});
+const nfNum  = new Intl.NumberFormat('pt-BR');
+const nfNum1 = new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1});
+function fmtBRL(n){ return nfBRL0.format(n); }
+function fmtBRL2(n){ return nfBRL2.format(n); }
+function fmtNum(n){ return nfNum.format(Math.round(n)); }
+function compactBRL(n){
+  if(Math.abs(n)>=1e6) return 'R$ '+nfNum1.format(n/1e6)+' mi';
+  if(Math.abs(n)>=1e3) return 'R$ '+nfNum1.format(n/1e3)+' mil';
+  return fmtBRL(n);
+}
+function pct(n,d=0){ return (n*100).toFixed(d).replace('.',',')+'%'; }
+
+/* ---------------------------------------------------------------- reference data (mirrors VW_CLIENTES / VW_PRODUTOS) */
+const CIDADES = [
+  {cidade:'São Paulo', estado:'SP', regiao:'Sudeste', peso:9},
+  {cidade:'Campinas', estado:'SP', regiao:'Sudeste', peso:4},
+  {cidade:'Ribeirão Preto', estado:'SP', regiao:'Sudeste', peso:3},
+  {cidade:'Rio de Janeiro', estado:'RJ', regiao:'Sudeste', peso:5},
+  {cidade:'Belo Horizonte', estado:'MG', regiao:'Sudeste', peso:4},
+  {cidade:'Uberlândia', estado:'MG', regiao:'Sudeste', peso:2},
+  {cidade:'Curitiba', estado:'PR', regiao:'Sul', peso:3},
+  {cidade:'Porto Alegre', estado:'RS', regiao:'Sul', peso:3},
+  {cidade:'Joinville', estado:'SC', regiao:'Sul', peso:2},
+  {cidade:'Salvador', estado:'BA', regiao:'Nordeste', peso:3},
+  {cidade:'Recife', estado:'PE', regiao:'Nordeste', peso:2},
+  {cidade:'Fortaleza', estado:'CE', regiao:'Nordeste', peso:2},
+  {cidade:'Goiânia', estado:'GO', regiao:'Centro-Oeste', peso:2},
+  {cidade:'Brasília', estado:'DF', regiao:'Centro-Oeste', peso:2},
+  {cidade:'Campo Grande', estado:'MS', regiao:'Centro-Oeste', peso:1},
+  {cidade:'Manaus', estado:'AM', regiao:'Norte', peso:1},
+  {cidade:'Belém', estado:'PA', regiao:'Norte', peso:1},
+];
+const REAL_CLIENTES = ['A MUNDIAL','TAMOIO','A.J.SIMON','A.R.S PARAFUSOS','ABRAFFIX','BALMER','ACO LACO','ACOFER','ACRO - SP','ADAM','AGUIA','AKZO NOBEL -GUARULHOS','ALPAR PARAFUSOS','GLOBAL LASH','ALLCABOS','ALTITUDE','AMARO CENTER','ANDAIMETAL'];
+const SEGMENTOS = ['Ferragens e Fixação', 'Metalurgia e Aço', 'Construção Civil', 'Manutenção Industrial', 'Distribuição Atacadista'];
+const TIPOS_VENDA = ['Distribuidor', 'Atacado', 'Varejo Especializado', 'Indústria', 'Exportação'];
+
+let VENDEDORES = [
+  {id:'V01', nome:'Marina Salgado', tipo:'Interno'},
+  {id:'V02', nome:'Rafael Tude', tipo:'Externo'},
+  {id:'V03', nome:'Camila Bezerra', tipo:'Interno'},
+  {id:'V04', nome:'Eduardo Nishimura', tipo:'Externo'},
+  {id:'V05', nome:'Patrícia Lemos', tipo:'Interno'},
+  {id:'V06', nome:'Bruno Anastácio', tipo:'Externo'},
+  {id:'V07', nome:'Juliana Prado', tipo:'Interno'},
+  {id:'V08', nome:'Thiago Vasconcelos', tipo:'Externo'},
+];
+let VENDEDORES_INTERNOS = VENDEDORES.filter(v=>v.tipo==='Interno');
+let META_MENSAL_EMPRESA = 3090000;
+
+const TRANSPORTADORAS = ['CargoLince Transportes','Rota Sul Cargas','Expresso Nordeste','VeloCarga Transportes','LogPrime Distribuição','Malha Rápida Log.'];
+const MOTORISTAS = ['Carlos Eduardo','Vanderlei Souza','Josué Martins','Ronaldo Aparecido','Wellington Dias','Anderson Melo','Sérgio Nunes','Fabiano Rocha','Elias Costa','Marcos Tadeu'];
+const USUARIOS_RESPONSAVEIS = ['Fernanda Teixeira','Rodrigo Monteiro','Camila Duarte','Lucas Herrera','Beatriz Nogueira'];
+const CONDICOES_PGTO = ['À VISTA','30 DIAS','30/60 DIAS','30/60/90 DIAS','BOLETO 15 DIAS','CARTÃO CRÉDITO'];
+const CFOPS = [
+  {codigo:'5102', desc:'Venda de merc. adquirida de terceiros'},
+  {codigo:'6102', desc:'Venda interestadual de merc. de terceiros'},
+  {codigo:'5405', desc:'Venda sujeita a Subst. Tributária'},
+  {codigo:'5109', desc:'Venda de produção do estabelecimento'},
+  {codigo:'7102', desc:'Venda de mercadoria (exportação)'},
+];
+const PRODUTOS = [
+  {nome:'Suporte Metálico Universal', divisao:'Acessórios', peso:3},
+  {nome:'Braçadeira Ajustável', divisao:'Acessórios', peso:3},
+  {nome:'Kit Fixação Rápida', divisao:'Acessórios', peso:2},
+  {nome:'Elevador Hitachi HX-12', divisao:'Hitachi', peso:2},
+  {nome:'Escada Rolante Hitachi ER-30', divisao:'Hitachi', peso:1},
+  {nome:'Kit Manutenção Hitachi', divisao:'Hitachi', peso:2},
+  {nome:'Equipamento Diverso', divisao:'Imobilizado', peso:1},
+  {nome:'Item Diverso A', divisao:'Diversos', peso:1},
+  {nome:'Item Diverso B', divisao:'Diversos', peso:1},
+  {nome:'Trilho de Fixação Ferroviário', divisao:'Metro - Ferroviário', peso:1},
+  {nome:'Conector Catenária', divisao:'Metro - Ferroviário', peso:1},
+  {nome:'Central de Alarme XT-200', divisao:'Detecção e Alarme', peso:3},
+  {nome:'Sensor de Fumaça Óptico', divisao:'Detecção e Alarme', peso:3},
+  {nome:'Detector de Calor Fixo', divisao:'Detecção e Alarme', peso:2},
+  {nome:'Painel Circuit Fire CF-500', divisao:'Circuit Fire', peso:2},
+  {nome:'Módulo Endereçável Circuit Fire', divisao:'Circuit Fire', peso:2},
+  {nome:'Botoeira Circuit Fire', divisao:'Circuit Fire', peso:2},
+  {nome:'Extintor PQS 6kg', divisao:'Acessórios Contra Incêndios', peso:3},
+  {nome:'Mangueira de Incêndio 30m', divisao:'Acessórios Contra Incêndios', peso:2},
+  {nome:'Sinalizador de Rota de Fuga', divisao:'Acessórios Contra Incêndios', peso:2},
+];
+
+const DIAS_PARA_INATIVAR = 90; // regra de negócio: 90 dias sem comprar = inativo
+
+function buildClientes(nomes){
+  return nomes.map((nome,i)=>{
+    const cid = weightedPick(CIDADES, c=>c.peso);
+    const vendedor = pick(VENDEDORES);
+    const diasCadastro = ri(15,1100);
+    const dataCadastro = addDays(HOJE, -diasCadastro);
+    const isLead = rand()<0.11; // nunca converteu em comprador (Em Desenvolvimento)
+
+    let dataAtivacao = null, cutoffOffset = 0;
+    if(!isLead){
+      const gapAtivacao = ri(2, Math.max(2, Math.min(60, diasCadastro)));
+      dataAtivacao = addDays(dataCadastro, gapAtivacao);
+      // cliente com tempo de casa suficiente pode ter parado de comprar há 90+ dias
+      const podeFicarInativo = diasCadastro > DIAS_PARA_INATIVAR+10;
+      if(podeFicarInativo && rand()<0.32){
+        cutoffOffset = ri(DIAS_PARA_INATIVAR+1, Math.min(130, diasCadastro-5));
+      }
+    }
+
+    return {
+      id:'CLI-'+String(1000+i),
+      razaoSocial:nome,
+      tipo:'PJ',
+      situacao: isLead? 'Em Desenvolvimento' : 'Ativo', // provisório — recalculado após gerar os pedidos
+      segmento: pick(SEGMENTOS),
+      tipoVenda: pick(TIPOS_VENDA),
+      cidade:cid.cidade, estado:cid.estado, regiao:cid.regiao,
+      vendedor,
+      dataCadastro, dataAtivacao, dataAlteracao: dataCadastro,
+      cutoffOffset,
+    };
+  });
+}
+let CLIENTES = buildClientes(REAL_CLIENTES);
+const CLIENTES_COMPRADORES = CLIENTES.filter(c=>c.dataAtivacao);
+
+function deriveStatusClientes(){
+  const stats = statsClientes();
+  CLIENTES.forEach(c=>{
+    if(!c.dataAtivacao){ c.situacao = 'Em Desenvolvimento'; return; }
+    const ultimoOffset = stats[c.id].ultimoOffset;
+    if(ultimoOffset===null || ultimoOffset>=DIAS_PARA_INATIVAR){
+      c.situacao = 'Inativo';
+      const dataUltimaCompra = ultimoOffset===null ? c.dataAtivacao : addDays(HOJE,-ultimoOffset);
+      const dataInativacao = addDays(dataUltimaCompra, DIAS_PARA_INATIVAR);
+      c.dataAlteracao = dataInativacao > HOJE ? HOJE : dataInativacao;
+    } else {
+      c.situacao = 'Ativo';
+      c.dataAlteracao = addDays(HOJE, -ultimoOffset);
+    }
+  });
+}
+
+/* ---------------------------------------------------------------- pedidos generator */
+const SITUACOES_ACOMP = ['PENDENTE','DISPONIVEL','EM SEPARACAO','SEPARADO','EM TRANSITO','FINALIZADO'];
+const PRAZOS = [3,5,7,10,15];
+const MOTIVOS_PENDENCIA = [
+  {motivo:'Aguardando aprovação do cliente', peso:9},
+  {motivo:'Análise de crédito em andamento', peso:4},
+  {motivo:'Ajuste técnico / especificação', peso:4},
+  {motivo:'Negociação de preço e condições', peso:4},
+  {motivo:'Aguardando disponibilidade de estoque', peso:3},
+  {motivo:'Sem retorno do cliente', peso:2},
+];
+
+function gerarPedidos(){
+  const pedidos = [];
+  let seq = 58000;
+  for(let offset=134; offset>=0; offset--){
+    const data = addDays(HOJE, -offset);
+    const dow = data.getDay();
+    if(dow===0) continue;
+    let base = dow===6 ? ri(0,5) : ri(11,27);
+    const trend = 1 + (134-offset)/134*0.16;
+    const wave = 1 + 0.06*Math.sin(offset/9);
+    const count = Math.round(base*trend*wave);
+    const poolDia = CLIENTES_COMPRADORES.filter(c=> offset>=c.cutoffOffset);
+
+    for(let k=0;k<count;k++){
+      const cliente = pick(poolDia.length?poolDia:CLIENTES_COMPRADORES);
+      const vendedor = rand()<0.72 ? cliente.vendedor : pick(VENDEDORES);
+      let situacao;
+      if(offset>20){
+        situacao = weightedPick([['FATURADO',.91],['CANCELADO',.09]], x=>x[1])[0];
+      } else if(offset>7){
+        situacao = weightedPick(
+          [['FATURADO',.82],['CANCELADO',.08],['LIBERADO',.05],['EMITIDO',.05]],
+          x=>x[1]
+        )[0];
+      } else {
+        situacao = weightedPick(
+          [['EMITIDO',.34],['LIBERADO',.29],['FATURADO',.30],['CANCELADO',.07]],
+          x=>x[1]
+        )[0];
+      }
+
+      let acomp = '-';
+      if(situacao==='EMITIDO') acomp = 'PENDENTE';
+      else if(situacao==='LIBERADO'){
+        acomp = weightedPick([['DISPONIVEL',.35],['EM SEPARACAO',.3],['SEPARADO',.25],['EM TRANSITO',.1]], x=>x[1])[0];
+      } else if(situacao==='FATURADO'){
+        if(offset>15) acomp = 'FINALIZADO';
+        else if(offset>6) acomp = rand()<0.88 ? 'FINALIZADO' : 'EM TRANSITO';
+        else acomp = weightedPick([['SEPARADO',.18],['EM TRANSITO',.32],['FINALIZADO',.5]], x=>x[1])[0];
+      }
+
+      const expFactor = rand()<0.1 ? rf(3,6) : 1;
+      const valorTotal = Math.round((rf(900,7800))*expFactor);
+      const qtd = Math.max(4, Math.round(valorTotal/rf(65,110)));
+      const volume = +(qtd*rf(0.003,0.006)).toFixed(2);
+      const prazo = pick(PRAZOS);
+      const dataLimite = addDays(data, prazo);
+      const atrasoDias = Math.max(0, dayOffset(dataLimite))*-1 + 0; // placeholder, recalculated below
+      const emAndamento = (situacao==='LIBERADO' || situacao==='FATURADO') && acomp!=='FINALIZADO';
+      const diasParaLimite = Math.round((dataLimite-HOJE)/86400000);
+      const atrasada = emAndamento && diasParaLimite < 0;
+      const itemVendido = weightedPick(PRODUTOS, x=>x.peso);
+
+      seq++;
+      pedidos.push({
+        numero: 'PED-'+seq,
+        dataEmissao: data,
+        offset,
+        dataFat: data,
+        offsetFat: offset,
+        tempoEntrega: prazo,
+        condPgto: pick(CONDICOES_PGTO),
+        valorTotal, qtd, volume,
+        cliente, vendedor,
+        naturezaCliente: cliente.tipoVenda,
+        transportadora: pick(TRANSPORTADORAS),
+        cfop: pick(CFOPS),
+        situacao,
+        situacaoAcomp: acomp,
+        temCotacao: situacao==='EMITIDO',
+        motivoPendencia: situacao==='EMITIDO' ? weightedPick(MOTIVOS_PENDENCIA, m=>m.peso).motivo : null,
+        prazoEntrega: prazo,
+        dataLimite,
+        emAndamento,
+        atrasada,
+        diasParaLimite,
+        amostra: rand()<0.06,
+        motorista: emAndamento && acomp!=='PENDENTE' && acomp!=='DISPONIVEL' ? pick(MOTORISTAS) : null,
+        responsavel: pick(USUARIOS_RESPONSAVEIS),
+        produto: itemVendido.nome,
+        divisao: itemVendido.divisao,
+      });
+    }
+  }
+  return pedidos;
+}
+let PEDIDOS = gerarPedidos();
+deriveStatusClientes();
+
+/* ---------------------------------------------------------------- geodata (IBGE malhas API, UF level) */
+const BR_MAP = {"viewBox":[0,0,480,493],"states":{"RO":{"nome":"Rondônia","d":"M141.7,232.4 L143.4,232.9 L144.2,232.3 L145.4,233 L145.4,234.2 L148.2,236.5 L149,237.6 L152,237.4 L153.3,238 L156,237.2 L156.7,237.7 L158.9,237.3 L160.1,237.9 L160.5,238.7 L162.6,239.7 L163.6,238.2 L166.6,236.7 L166.8,235 L167.2,234.2 L168,231.9 L169.1,230.5 L169.9,230.4 L171,226.1 L171.9,225.9 L174,222.6 L172.7,221.4 L172.5,219.8 L171.6,218.7 L171.5,217.2 L170.1,216.3 L170,213 L172.1,211 L172.3,209.9 L171.6,208.7 L171.6,207.2 L166.5,206.8 L165.7,205.5 L159.1,205.6 L153.8,205.5 L152.3,205.5 L153.2,202.7 L153.4,198.3 L152.3,196.9 L151.9,193.8 L152.4,193 L152.8,191.3 L152,189.5 L153.2,188.3 L151.9,186.2 L151.5,184.5 L151.4,183.6 L152.6,183.5 L152.2,181.6 L153.3,179.4 L151.9,177.8 L150.3,176.4 L148.8,177 L148,178.6 L146.9,178.8 L146.4,177.9 L145.3,177.9 L144.5,175.2 L143.5,175 L143.3,175.8 L142.3,174 L142.4,172.8 L141.1,172 L140.5,172.6 L139.9,171.3 L138.8,170.6 L138.3,168.9 L136.2,167.4 L126.9,167.4 L126.9,168.1 L125.4,170.4 L124.9,172 L123.9,171.4 L123,171.9 L122.6,173.8 L123.2,174.8 L121.9,176.5 L120.6,177.1 L120.6,179.7 L118.5,180.3 L118.3,179.5 L115.2,180.2 L114.8,180.6 L112.4,180.2 L110.8,182 L111,183.2 L109.4,185.5 L108.3,186 L107.5,183.9 L106.7,183.7 L105.2,184.7 L104.7,184.3 L104.8,186.2 L102.8,185.6 L101.7,186.1 L101.1,187.5 L99.9,187.1 L98.2,185.6 L95.7,185.9 L92.8,185.5 L93,186.7 L91.7,188.4 L90.3,188.8 L87.9,190.7 L90.1,191.7 L95.2,190.9 L95.9,190.3 L98,190.6 L99.2,189.9 L101.4,190 L103.3,190.9 L104.6,188.8 L105.7,189.5 L106.5,191.3 L106,192.3 L106.5,195.8 L105.3,197.8 L105.4,198.4 L104.8,199.1 L105.1,201.1 L105.8,201.9 L105.6,203.2 L106.7,204 L107,205.5 L105.6,207.5 L106.3,212 L107.5,212.4 L107.5,215.1 L108.9,214.6 L109.7,218.3 L112,218.4 L113.7,219.6 L113.6,220.5 L115,221 L116,221.1 L116,222.6 L117.3,223.9 L119.4,224.1 L122.8,225 L123.7,224 L126.2,224 L129.2,225.4 L130.9,226.9 L133.4,226.3 L134.5,228.9 L135.9,229.2 L137.1,230.9 L138.7,230.6 L139.3,231.5 L141.7,232.4 Z","cx":132.4,"cy":201.5},"AC":{"nome":"Acre","d":"M83.9,188.9 L81.6,187.9 L81.6,187.9 L79.2,187.5 L73.6,184.8 L70.6,183.5 L65.4,181 L62,178 L58.4,174.9 L55.6,172.4 L51.2,168.5 L48.1,165.8 L42.5,165.1 L35.5,164.3 L31.9,163.9 L25,163 L22.2,162.7 L17.1,162.1 L13.3,160.6 L3,156.8 L2.2,156.5 L3.5,158.8 L1.3,159.9 L0.2,159.7 L0.8,161 L0,162.3 L2,164.2 L3.6,164.8 L3.4,166.1 L2.6,166 L3.1,167.4 L4.3,168.5 L5.5,172.1 L8,173.8 L7.8,175.4 L10.5,177.5 L11.4,179.2 L12.1,179.4 L12.8,181.3 L10.8,184.2 L9.5,185.6 L15.5,185.6 L18,186.6 L20.1,186.8 L21.2,188.3 L21,189.8 L22.4,190.5 L22.1,193 L31.9,193 L34,192.6 L35.6,190.8 L36.6,190.7 L38.2,188.8 L39,188.5 L41.8,185.8 L42.6,185.7 L41.5,188 L42.4,189.4 L41.2,190.9 L41.2,194 L41.2,198.4 L41.2,201.9 L41.2,205.7 L42.3,204.8 L43.6,206.1 L45.1,206.5 L46.8,206.2 L49.6,204.7 L52,205.3 L55.9,204.7 L58.2,204.9 L62.1,205.9 L64.1,205.9 L64.5,207.5 L66.6,207.1 L68.5,206.2 L70.4,205.1 L73.3,201.2 L75,201.1 L76.9,201.9 L78.6,199.5 L81.7,197.8 L81.7,197 L83.4,197.3 L85.5,195.9 L86.8,194.4 L90.1,191.7 L87.9,190.7 L83.9,188.9 Z","cx":40.7,"cy":185},"AM":{"nome":"Amazonas","d":"M194,159.4 L193.6,157.4 L191.7,154.9 L190.5,154 L189.9,152.3 L190.6,150.3 L192.5,148.5 L197.5,137.4 L203.8,123.5 L208.6,112.9 L209.1,111.7 L210.4,108.8 L210.9,107.6 L215.4,97.7 L214.6,97.4 L215.5,95.4 L217.8,94.2 L219.1,92.2 L217.5,92.6 L215.2,94.1 L213.9,93.7 L213.1,94.1 L212,94.6 L211,94.1 L211.2,92.1 L209.8,92.1 L207.7,90.9 L207.1,89.2 L204.9,88.1 L203.7,88.6 L200.9,86.6 L199.8,86.8 L199.3,85.6 L196.3,84.3 L195.8,83.5 L196.2,81.4 L195.4,80.5 L193.9,82.2 L192.7,80.9 L191.9,81.1 L190.6,79.6 L190.5,77.9 L187.7,75.7 L186.8,74.4 L186.9,72.2 L185.2,71 L185.2,67.6 L184.8,66.8 L184.8,63.3 L180.3,63.3 L178.2,63.3 L170.8,63.3 L168.5,68.2 L166.5,73.6 L167.5,75.7 L165.2,76.5 L164.7,77.6 L163.1,77.9 L162,77.4 L161.3,75.4 L159.9,73.6 L156.3,72.9 L156.2,73.7 L153.4,74.9 L152.5,76.2 L151.9,79 L152.4,80.1 L151.4,83.1 L151.5,84.3 L152.5,84.7 L153.2,86.6 L151.6,84.9 L149.3,84.1 L148.8,84.3 L148.1,84.3 L146.6,81.1 L145.3,79.7 L143.6,79 L142,77 L140.6,76.2 L140.8,75.2 L142.4,75.5 L143.3,74.6 L142.9,73.5 L144.5,70.7 L143.8,70.4 L143.8,68.8 L142.9,67.8 L142.8,66.7 L141.8,65.7 L141.3,64 L141.3,61.8 L140.5,61 L140.2,58.1 L141.1,56.8 L141.4,54.5 L141,52.9 L140.4,52.9 L139,48.5 L137.8,47.3 L136.9,46.5 L137.9,45.1 L138.2,42.2 L136.5,41.1 L134.3,41.2 L132.9,39.3 L131.2,39.4 L130,38.7 L129.7,39.5 L127.7,39.7 L124.4,41.8 L122.6,41.5 L121.5,42.2 L121.5,45.4 L118.3,48.5 L117.4,49 L117.4,47.3 L115.5,48.7 L115.1,49.7 L112.9,51.1 L112.2,50.5 L110.6,51.1 L109.8,52.5 L108.2,52.4 L108,54.6 L106,54.9 L104.6,57.9 L103.4,58.4 L102.8,57.5 L103.9,56 L102.9,53.9 L101,54 L98.7,55.4 L98.2,56.4 L96,57.2 L95.2,56.8 L93.9,57.3 L93.9,57.1 L87.3,51.1 L84.5,51.9 L84.7,48.4 L84.4,44.7 L83.6,43.3 L82.1,42.9 L80.8,38.3 L79.2,39.2 L78,41.1 L76,41 L74,43.5 L72.2,42.6 L71.6,41.5 L70.3,42.3 L70,43.5 L71.4,44.7 L56.3,44.8 L54.5,44.2 L53,44.9 L50.7,45 L50.7,53 L52.4,52.5 L52.4,53 L57.1,52.9 L58,53.4 L59.3,55.5 L58.8,57.2 L59.6,58.5 L56.8,58.9 L55.2,57.3 L53.4,58.7 L52.6,58.2 L51,59.2 L48.2,59.5 L48.2,65.8 L48.1,69 L49.7,70.8 L50.7,71 L53.6,73.1 L54.1,74.7 L53.4,76.1 L54.6,78.3 L55.9,79.3 L56.2,81.1 L55.8,84.2 L53.5,97.5 L50.8,113.2 L49.4,120.6 L48.2,121.9 L47.2,120.8 L46.3,121.7 L45,120.3 L45.2,119.2 L42.4,118.9 L41.2,119.6 L39.5,119.2 L38.2,120.4 L37.3,122 L33.3,122 L33.3,122.6 L30.4,122.7 L29,123.9 L27,123.3 L25.3,123.9 L24.9,124.9 L21.3,127.1 L19.7,127.4 L19.2,128.6 L17,129.6 L13.4,131.9 L13.6,133.6 L12.5,136.1 L12.5,138.1 L10.2,140.7 L9,144.3 L10.7,147.6 L9.4,149.8 L7.7,150 L4.2,152.1 L2.8,154.4 L3.1,155.4 L2.2,156.5 L3,156.8 L13.3,160.6 L17.1,162.1 L22.2,162.7 L25,163 L31.9,163.9 L35.5,164.3 L42.5,165.1 L48.1,165.8 L51.2,168.5 L55.6,172.4 L58.4,174.9 L62,178 L65.4,181 L70.6,183.5 L73.6,184.8 L79.2,187.5 L81.6,187.9 L81.6,187.9 L83.9,188.9 L87.9,190.7 L90.3,188.8 L91.7,188.4 L93,186.7 L92.8,185.5 L95.7,185.9 L98.2,185.6 L99.9,187.1 L101.1,187.5 L101.7,186.1 L102.8,185.6 L104.8,186.2 L104.7,184.3 L105.2,184.7 L106.7,183.7 L107.5,183.9 L108.3,186 L109.4,185.5 L111,183.2 L110.8,182 L112.4,180.2 L114.8,180.6 L115.2,180.2 L118.3,179.5 L118.5,180.3 L120.6,179.7 L120.6,177.1 L121.9,176.5 L123.2,174.8 L122.6,173.8 L123,171.9 L123.9,171.4 L124.9,172 L125.4,170.4 L126.9,168.1 L126.9,167.4 L136.2,167.4 L138.3,168.9 L138.8,170.6 L139.9,171.3 L140.5,172.6 L141.1,172 L142.4,172.8 L142.3,174 L143.3,175.8 L143.5,175 L144.5,175.2 L145.3,177.9 L146.4,177.9 L146.9,178.8 L148,178.6 L148.8,177 L150.3,176.4 L151.9,177.8 L166.2,177.8 L182,177.9 L190.4,177.8 L191.8,176.7 L190.5,176.6 L191,175.3 L190.7,173.9 L192,171.8 L192.3,168.9 L191.2,165.6 L192.2,164.9 L193.3,163 L193.2,160.9 L194.1,159.6 L194,159.4 Z","cx":116.8,"cy":107.9},"RR":{"nome":"Roraima","d":"M120,22.5 L120.9,24.4 L119.6,27.6 L120.5,28.4 L122.1,31.1 L122.5,33.2 L121.5,35 L122.8,35.4 L124.2,35.1 L125.2,35.7 L127.2,35.6 L128.9,36.3 L129.5,35.6 L130.2,36.5 L130,38.7 L131.2,39.4 L132.9,39.3 L134.3,41.2 L136.5,41.1 L138.2,42.2 L137.9,45.1 L136.9,46.5 L137.8,47.3 L139,48.5 L140.4,52.9 L141,52.9 L141.4,54.5 L141.1,56.8 L140.2,58.1 L140.5,61 L141.3,61.8 L141.3,64 L141.8,65.7 L142.8,66.7 L142.9,67.8 L143.8,68.8 L143.8,70.4 L144.5,70.7 L142.9,73.5 L143.3,74.6 L142.4,75.5 L140.8,75.2 L140.6,76.2 L142,77 L143.6,79 L145.3,79.7 L146.6,81.1 L148.1,84.3 L148.8,84.3 L149.3,84.1 L151.6,84.9 L153.2,86.6 L152.5,84.7 L151.5,84.3 L151.4,83.1 L152.4,80.1 L151.9,79 L152.5,76.2 L153.4,74.9 L156.2,73.7 L156.3,72.9 L159.9,73.6 L161.3,75.4 L162,77.4 L163.1,77.9 L164.7,77.6 L165.2,76.5 L167.5,75.7 L166.5,73.6 L168.5,68.2 L170.8,63.3 L178.2,63.3 L180.3,63.3 L184.8,63.3 L184.8,51.1 L184.5,50 L183,49.9 L180.5,49.1 L179.5,47.5 L178.5,47 L177,44.9 L175.1,44.4 L175.4,43.1 L174.4,43.2 L174.6,41.4 L174.5,37.7 L173.2,37.3 L171.5,32.8 L171.5,29.6 L172.4,26 L173.7,24.2 L173.7,22.3 L172.9,21.6 L175.4,19.7 L177.1,17 L174.9,14 L174.6,12.5 L175.3,11.7 L174.5,10.7 L171.7,9.6 L169.3,9.5 L171,7.2 L171.7,2.5 L170.1,1.7 L169.7,0.3 L168.7,0 L167.3,0.8 L164.2,0.9 L162.8,0.5 L164.2,4 L163.3,4.9 L162.1,6.5 L159.7,7.8 L159.1,9.6 L157.2,10 L155.8,9.3 L154.8,10.8 L153.6,10.5 L152.8,12 L152.2,12.9 L150,12.8 L149,14 L146.9,13.9 L145,15.1 L142,13.8 L140,14.7 L140.3,15.5 L137.8,15.6 L137.1,17.4 L137.9,18.5 L137.6,20.2 L136.9,19.5 L134.7,21 L133.6,20 L133.8,19.2 L132.1,18.5 L132,16.7 L129,16.6 L129.5,17.2 L128.3,18 L126.3,15.8 L125.8,17.3 L125.3,16.8 L123.2,17 L122.7,17.7 L121,15 L120.2,14.4 L117,14.4 L115.4,14.8 L112.7,12.5 L112.4,13.9 L116.4,18.8 L118.8,19.9 L119.9,21.4 L120,22.5 Z","cx":148.8,"cy":39.1},"PA":{"nome":"Pará","d":"M315.9,128.7 L317.6,127.4 L318,127 L320.6,125 L322.2,124.9 L323,124.3 L325.2,120.8 L326,120.3 L326.3,118.6 L329.5,115.4 L330.2,112.2 L330.1,111.7 L331.2,110.6 L331.3,109.3 L332.9,108.4 L333.4,106.8 L334.5,105.7 L334.5,103.2 L335.6,102.6 L334.6,101.2 L335.4,100 L336.6,99.7 L337.5,97.9 L337.4,97.1 L337.7,95.4 L339.4,93.9 L339.6,92.5 L340.1,90.8 L340.2,89.8 L339,89.5 L339,88.6 L340.2,88.5 L340.8,87.1 L340.7,85.3 L341.6,83.5 L340.8,82.8 L341.5,81.8 L342,80.6 L341.7,79.5 L340.5,80.3 L340.3,77.8 L338.7,79.5 L337.1,79.6 L336.7,77.7 L336.3,78.7 L335,78.9 L335.1,76.8 L333.1,77.6 L332.6,76.1 L331.3,77.5 L330.7,75.6 L329.8,76.7 L329.4,75.2 L328.6,76.3 L328.4,75.1 L327.4,74.8 L325.8,74.3 L325.4,74.9 L324.8,74.1 L324.7,76 L323.3,73.9 L323.1,75.5 L322.8,75.6 L322.8,74.2 L321.3,74.3 L319.3,73.8 L318.6,75.3 L317.7,75 L316.6,76.2 L316.2,76.9 L314.7,78.3 L313.3,78.1 L312.5,77.7 L312.1,76.1 L312.9,71.8 L313.7,70.5 L313.1,69.5 L309.2,69.8 L307.1,69.5 L304.1,68.3 L301.4,69.1 L300.7,68.2 L301.7,67 L301.2,65.8 L298.3,65.7 L297.5,64.7 L298.3,63.6 L300.1,62.4 L299,61.4 L295.2,62.6 L291.8,62.3 L291.7,61.6 L293.4,59.9 L292.9,58.6 L291,57.8 L288.8,58.8 L286.5,63.5 L285.9,64 L284.7,65 L281.9,66.1 L280.1,67.9 L279,68.1 L277.3,70.4 L276.3,72.6 L274.3,74.9 L273.2,76.7 L273,80.1 L272,81 L270.7,81.4 L269.7,80.9 L268,82 L267.8,81.1 L265.2,80.7 L264.2,79.9 L263.7,77.1 L263.1,77.5 L263.2,75.6 L262.8,73.9 L261.5,74 L260.8,72.9 L260.9,70.6 L257.9,68.4 L257.3,66.2 L255.9,64.2 L254.9,61.8 L255.3,59 L255.8,58 L252,54.9 L251.4,52.3 L251.8,51 L250.6,51.3 L250.5,49.9 L246.2,48.8 L246.1,48.2 L243.7,47.8 L243.3,46.3 L240.2,44.3 L238.7,44.6 L237.4,44.1 L235.7,44.2 L235.6,41.7 L234.9,40.9 L235.5,38.8 L234.1,35.9 L233.1,34 L231.3,34.7 L230.4,34.3 L228.6,34.8 L227.8,36.1 L226.4,35.7 L223.9,36.3 L223.8,36.3 L221.1,34.6 L219.7,37.1 L218.6,38 L219.8,38.5 L220.7,40.2 L221.5,42.8 L220.3,43.5 L218.4,42.7 L217.4,42.9 L215,42 L213.2,42.5 L211.5,42.3 L210.7,43.2 L209,42.2 L208.1,42.5 L207,41 L205,42 L204.3,41.4 L202.8,42.5 L202.5,43.8 L201,45.3 L198.4,44.8 L198.3,45.3 L195.9,45.7 L195.8,47.6 L194.2,47.7 L193.8,46.9 L191.9,46.8 L191.3,47.9 L189.6,48.1 L190.2,49.3 L189.7,50.6 L187.1,50.3 L186.9,51.2 L185.7,51.8 L184.8,51.1 L184.8,63.3 L184.8,66.8 L185.2,67.6 L185.2,71 L186.9,72.2 L186.8,74.4 L187.7,75.7 L190.5,77.9 L190.6,79.6 L191.9,81.1 L192.7,80.9 L193.9,82.2 L195.4,80.5 L196.2,81.4 L195.8,83.5 L196.3,84.3 L199.3,85.6 L199.8,86.8 L200.9,86.6 L203.7,88.6 L204.9,88.1 L207.1,89.2 L207.7,90.9 L209.8,92.1 L211.2,92.1 L211,94.1 L212,94.6 L213.1,94.1 L213.9,93.7 L215.2,94.1 L217.5,92.6 L219.1,92.2 L217.8,94.2 L215.5,95.4 L214.6,97.4 L215.4,97.7 L210.9,107.6 L210.4,108.8 L209.1,111.7 L208.6,112.9 L203.8,123.5 L197.5,137.4 L192.5,148.5 L190.6,150.3 L189.9,152.3 L190.5,154 L191.7,154.9 L193.6,157.4 L194,159.4 L194.1,159.6 L195.1,160.1 L197.1,163.7 L197.9,167.3 L200.2,170.5 L199.7,172.9 L200.3,174.4 L200.8,177.3 L202.9,177.8 L203,178.6 L205.6,179.4 L207.6,181.6 L207.3,182.7 L208.1,183.3 L210.3,183.5 L211.1,185.5 L212.1,185 L217,185.4 L218.4,185.6 L221.9,185.9 L232.6,186.8 L237.3,187.2 L243.5,187.6 L249.8,188.1 L255.4,188.5 L261.7,189 L266.2,189.3 L277.8,190.2 L283.5,190.5 L291.1,191 L292.7,187.1 L293.4,184 L294.2,183.3 L295.5,181.4 L295.6,181.2 L297.7,178.6 L298.8,178.4 L300.2,176.3 L301.2,174.6 L301.8,173 L302.6,172.5 L303.4,170.3 L303.9,167.9 L304,165.9 L304.1,165.1 L301.9,163.4 L301.6,162.9 L301.4,161.4 L302.8,159.7 L303.8,157.6 L303.7,156.7 L303.7,155.6 L303.5,154.2 L305,153.1 L305.6,152.7 L307.9,151.9 L310.2,150.9 L310.6,148.7 L310.7,148.5 L312.2,146.9 L313.7,146.8 L313,145 L313.5,144.3 L314.8,143.7 L314.2,142.5 L315.5,141.8 L314.7,140.4 L314.9,139 L316.2,138.8 L316.6,137.4 L314.3,136.1 L313.7,134.9 L312.9,135 L311,135.2 L309.1,134.2 L312.8,131.2 L315.7,128.9 L315.9,128.7 Z","cx":266.4,"cy":97.5},"AP":{"nome":"Amapá","d":"M285.4,39.5 L284.1,35.1 L283.7,34.9 L282.9,31.9 L282.1,30.8 L281.2,26 L280.2,23 L280.6,21.6 L280.6,17.5 L279.7,17.2 L278.9,14.2 L278.1,12.9 L275.6,10.5 L273.8,9.6 L273.3,11.9 L273.9,13.2 L273.5,15.4 L272,16.5 L271.8,17.5 L269.7,19.8 L269.5,20.8 L266.5,25.7 L265,27.1 L265.3,27.7 L263.5,31.5 L262.6,34.8 L261.2,36.6 L259,37.7 L258.2,39 L256,38.7 L253.6,39 L254.3,38 L253.1,37 L251.3,38.1 L247.9,37.4 L247.7,36.6 L245.5,38.3 L242.5,39.1 L239.5,38.7 L237.4,37.1 L236.3,36.8 L235.7,35.4 L234.1,35.9 L235.5,38.8 L234.9,40.9 L235.6,41.7 L235.7,44.2 L237.4,44.1 L238.7,44.6 L240.2,44.3 L243.3,46.3 L243.7,47.8 L246.1,48.2 L246.2,48.8 L250.5,49.9 L250.6,51.3 L251.8,51 L251.4,52.3 L252,54.9 L255.8,58 L255.3,59 L254.9,61.8 L255.9,64.2 L257.3,66.2 L257.9,68.4 L260.9,70.6 L260.8,72.9 L261.5,74 L262.8,73.9 L263.2,75.6 L263.1,77.5 L263.7,77.1 L264.2,79.9 L265.2,80.7 L267.8,81.1 L268,82 L269.7,80.9 L270.7,81.4 L272,81 L273,80.1 L273.2,76.7 L274.3,74.9 L276.3,72.6 L277.3,70.4 L279,68.1 L280.1,67.9 L281.9,66.1 L284.7,65 L285.9,64 L286.5,63.5 L288.8,58.8 L291,57.8 L294,55.6 L294,54.8 L295.2,53.8 L295,51 L295.3,47.7 L294.8,45.3 L291.9,43.7 L288.6,43.8 L285.4,39.5 Z M287.6,39 L287.6,40.1 L288.6,39.9 L287.6,39 Z M288.3,40 L287.4,41.3 L288.2,42.8 L289.9,42 L289.4,40.6 L288.3,40 Z","cx":267.4,"cy":46.6},"TO":{"nome":"Tocantins","d":"M325.3,147.8 L325.9,145.6 L325.3,143.3 L325.2,142.6 L325.2,140.7 L325.2,140.3 L324.7,137.9 L324.7,137.7 L323.7,135.7 L322.2,135.1 L320.4,134.7 L320,133.7 L319.1,132.9 L318.1,132.8 L317.5,133.3 L316.1,133.1 L315.6,132.8 L313.9,132 L312.4,132.3 L311.4,132.7 L310.9,134.1 L309.1,134.2 L311,135.2 L312.9,135 L313.7,134.9 L314.3,136.1 L316.6,137.4 L316.2,138.8 L314.9,139 L314.7,140.4 L315.5,141.8 L314.2,142.5 L314.8,143.7 L313.5,144.3 L313,145 L313.7,146.8 L312.2,146.9 L310.7,148.5 L310.6,148.7 L310.2,150.9 L307.9,151.9 L305.6,152.7 L305,153.1 L303.5,154.2 L303.7,155.6 L303.7,156.7 L303.8,157.6 L302.8,159.7 L301.4,161.4 L301.6,162.9 L301.9,163.4 L304.1,165.1 L304,165.9 L303.9,167.9 L303.4,170.3 L302.6,172.5 L301.8,173 L301.2,174.6 L300.2,176.3 L298.8,178.4 L297.7,178.6 L295.6,181.2 L295.5,181.4 L294.2,183.3 L293.4,184 L292.7,187.1 L291.1,191 L290.1,193.5 L288.9,195 L288.7,197.5 L288,198.1 L287.2,200.7 L286.4,201.4 L286.4,201.4 L286.8,202.5 L286.1,204.8 L286.4,206.5 L285.2,209.6 L284.8,212.5 L285.6,213 L285,214.9 L286,216.8 L285.5,218.2 L285.5,221 L285.9,221.1 L286.2,224.1 L285.4,226.5 L286.2,228.7 L287.6,229.2 L288.5,226.5 L290.1,224.5 L292.1,223.3 L291.2,224.4 L291.4,225.4 L290.8,225.9 L290,228.3 L291.5,229.6 L294.9,230.6 L301.6,234.4 L301.7,232.9 L303.2,229.5 L304.6,228.3 L306.4,230.4 L307.5,228.6 L307.7,228.5 L310.4,231.1 L311.3,232.5 L311.2,234.9 L312,232.7 L312.7,234.5 L316.6,232.9 L316.2,234.7 L317.4,234 L318.7,234.9 L320.8,235.1 L322.2,236.9 L322.9,235.6 L322.4,233.7 L323.6,232.4 L325.8,234.3 L332.4,231.8 L333.6,230.5 L335,230.6 L337.3,230.6 L337.4,230.1 L337.7,228.7 L338.4,230.8 L341.4,229.9 L338.8,230.4 L339.4,228 L339.2,225.6 L340.4,224.7 L340.4,224.7 L339.6,224.7 L339.3,223.1 L338.3,222.7 L338.3,219.6 L338.1,218.9 L339,217.6 L338.2,216.6 L338.7,215.9 L338.2,215.1 L339.1,214.3 L338.4,213.6 L341.1,213.6 L341.8,213.5 L341.4,213.3 L338.5,212.1 L337.4,212.2 L336,210.4 L336,209 L338.6,204.9 L339.5,204.8 L339.6,203.3 L340.3,203.1 L341.3,200.9 L345,198.8 L345.3,197.1 L346.5,196.3 L346.2,195 L346,196.1 L344.1,196.4 L343.9,197.7 L342.7,196.2 L342.5,195.3 L340.4,195.3 L338.8,195.3 L337.4,194 L337,191.8 L336.5,190.5 L334.9,189.7 L335.6,187.8 L336.2,187.5 L335.1,185.6 L333.6,185.6 L332.4,184.1 L332.8,183.1 L331.5,182.1 L331.3,181.2 L329.7,181.2 L330.1,180.4 L331.6,178.6 L331.8,175.2 L332.5,174.5 L333.2,172.4 L333.9,172.6 L336.2,171.8 L337.1,168.7 L336.7,167.4 L335.4,166.4 L332.9,167.1 L330.4,168.5 L328.2,165.7 L327.5,165.3 L325.3,162 L324.4,160.7 L323.3,160.7 L324.7,159.4 L323.9,158.5 L322.6,158.9 L322.2,158.2 L321.4,157.2 L322.5,157 L323.9,155.3 L324.2,153.1 L324.5,151.3 L324.9,149.8 L325.4,148.8 L325.3,147.8 Z","cx":317.9,"cy":187.2},"MA":{"nome":"Maranhão","d":"M318,127 L317.6,127.4 L315.9,128.7 L315.7,128.9 L312.8,131.2 L309.1,134.2 L310.9,134.1 L311.4,132.7 L312.4,132.3 L313.9,132 L315.6,132.8 L316.1,133.1 L317.5,133.3 L318.1,132.8 L319.1,132.9 L320,133.7 L320.4,134.7 L322.2,135.1 L323.7,135.7 L324.7,137.7 L324.7,137.9 L325.2,140.3 L325.2,140.7 L325.2,142.6 L325.3,143.3 L325.9,145.6 L325.3,147.8 L325.4,148.8 L324.9,149.8 L324.5,151.3 L324.2,153.1 L323.9,155.3 L322.5,157 L321.4,157.2 L322.2,158.2 L322.6,158.9 L323.9,158.5 L324.7,159.4 L323.3,160.7 L324.4,160.7 L325.3,162 L327.5,165.3 L328.2,165.7 L330.4,168.5 L332.9,167.1 L335.4,166.4 L336.7,167.4 L337.1,168.7 L336.2,171.8 L333.9,172.6 L333.2,172.4 L332.5,174.5 L331.8,175.2 L331.6,178.6 L330.1,180.4 L329.7,181.2 L331.3,181.2 L331.5,182.1 L332.8,183.1 L332.4,184.1 L333.6,185.6 L335.1,185.6 L336.2,187.5 L335.6,187.8 L334.9,189.7 L336.5,190.5 L337,191.8 L337.4,194 L338.8,195.3 L340.4,195.3 L342.5,195.3 L342.7,196.2 L343.5,196.3 L344.8,192.3 L344.5,191.4 L344.9,189 L344.8,187.5 L345.4,186.5 L344.1,184.7 L343.6,180.9 L342.9,179.5 L343.6,177.7 L344.8,176.8 L346.4,172.6 L346.9,170.9 L347.9,169.7 L348.7,166.3 L348.5,166 L349.5,163.6 L350.9,162.5 L354,161.5 L355.2,161.2 L355.3,161.2 L357.3,159.7 L358.9,160.1 L360.4,158 L362.6,156.6 L363.5,156.6 L363.9,155.8 L364.3,155.1 L365.9,152.6 L368.2,152.2 L370.3,151.4 L371.8,151.6 L373.6,152.8 L374,153.2 L374.8,153 L376.5,152.2 L379.7,151.9 L380.6,150.7 L381,148.8 L381.4,146 L379.8,144.2 L379,143.7 L378.4,141.3 L378.7,140.8 L378.4,137.6 L379.5,136.7 L380,135.6 L381.8,133.8 L382,132.2 L380.9,128.5 L380.9,128.4 L380.1,125.9 L381.4,123.5 L380.2,122.1 L380,121.7 L379.7,120 L380.3,119.3 L381.3,118.2 L382.1,116.9 L383,115.7 L383.6,114.6 L383.5,113.3 L384.1,112.5 L384.3,112.3 L384.9,111.6 L385.7,110.2 L386.1,110.7 L386.9,110.5 L388.5,110.2 L389.4,110 L390.3,108.9 L390.3,107.9 L392,107.4 L392.1,107.3 L393.4,105.3 L394.3,104.1 L393.9,103.5 L394,101.5 L394.2,101.1 L391.3,101.1 L391,100.6 L389.1,100.7 L388.6,101.5 L385.9,100.8 L384,99.8 L379.4,97.7 L376.7,96.4 L375.8,96.2 L374.9,96.2 L373.7,96.8 L373.9,98.1 L373,97.2 L372.5,98.3 L371,98.4 L370.5,97.4 L371.7,97 L372.3,95.5 L370.7,95.6 L370.2,97.2 L369.3,97.2 L369.2,98.4 L368.2,99 L366.4,101.3 L365.5,101.6 L364.1,101.5 L365.2,100.8 L366.2,99.2 L366.9,98.9 L366.7,97.8 L366.9,97 L365.2,97.7 L365.1,97.7 L364.6,97.9 L363.6,98.1 L362.3,102 L362.1,103.8 L361.3,104.9 L360.6,105.1 L360.1,105.1 L359.2,104.7 L359.3,103.2 L359.4,102.1 L360.5,99.4 L362.9,96.2 L361.7,93.7 L359.4,95.7 L359,95.5 L361.2,92.2 L360.2,92.3 L361.4,91.8 L360.6,90.5 L360.8,89.7 L359.8,88.9 L358,89.2 L358.7,88.4 L357.5,88.2 L359.5,87.1 L358.5,86.3 L356.9,87.1 L356.4,86.9 L356.8,84.5 L355.6,86.3 L355,85.4 L352.7,85.4 L351.8,86.8 L351.1,86.8 L351.3,83.5 L349.2,85.3 L348.8,83.2 L347.6,82.7 L346.6,82.7 L345.5,81.7 L345.4,81.6 L345.3,81.6 L344.7,82 L344.6,79.9 L343.4,81.8 L342.9,79.9 L341.5,81.8 L340.8,82.8 L341.6,83.5 L340.7,85.3 L340.8,87.1 L340.2,88.5 L339,88.6 L339,89.5 L340.2,89.8 L340.1,90.8 L339.6,92.5 L339.4,93.9 L337.7,95.4 L337.4,97.1 L337.5,97.9 L336.6,99.7 L335.4,100 L334.6,101.2 L335.6,102.6 L334.5,103.2 L334.5,105.7 L333.4,106.8 L332.9,108.4 L331.3,109.3 L331.2,110.6 L330.1,111.7 L330.2,112.2 L329.5,115.4 L326.3,118.6 L326,120.3 L325.2,120.8 L323,124.3 L322.2,124.9 L320.6,125 L318,127 Z M361.4,101.1 L360.1,102.2 L359.5,104.3 L360.5,104.8 L361.5,104 L361.4,101.1 Z M355.5,82.7 L354.7,83.3 L355.2,84.3 L356.7,83.4 L355.5,82.7 Z","cx":352,"cy":125.9},"PI":{"nome":"Piauí","d":"M407,170.8 L408.9,169.1 L409.3,168.1 L409.3,168.1 L409.5,167.7 L409.7,167.3 L409.5,165.4 L408.1,164.7 L408.7,163.4 L407.6,161.2 L408.3,160.6 L409.6,160.1 L409.9,159.1 L410.1,157.8 L410.7,156.1 L411.1,154.3 L411.8,152.6 L410.5,151.7 L407.6,151 L407.3,150.1 L406.7,148.8 L406.8,146.8 L405.9,145.3 L405.8,143.8 L405.2,143.1 L405.6,142.1 L405.2,139.5 L405.2,137.9 L404.9,136.1 L404.8,135.4 L404.9,132 L403.1,131 L402.6,130.1 L401,128.2 L401.2,127.4 L401.9,125.6 L401.1,124.4 L401.9,123.1 L402.3,121.8 L402.6,121.3 L402.9,119.5 L402.9,119.5 L402.4,118.7 L401.8,117.4 L401.3,116.8 L401.1,115.9 L401.1,113.6 L400,113.2 L399.6,111.6 L400.4,110.8 L400.1,109.4 L399,109 L400.1,106.8 L400.9,105.2 L400.8,104.2 L400.1,103.6 L398.7,103.4 L396.1,102.8 L394.5,101.5 L394,101.5 L393.9,103.5 L394.3,104.1 L393.4,105.3 L392.1,107.3 L392,107.4 L390.3,107.9 L390.3,108.9 L389.4,110 L388.5,110.2 L386.9,110.5 L386.1,110.7 L385.7,110.2 L384.9,111.6 L384.3,112.3 L384.1,112.5 L383.5,113.3 L383.6,114.6 L383,115.7 L382.1,116.9 L381.3,118.2 L380.3,119.3 L379.7,120 L380,121.7 L380.2,122.1 L381.4,123.5 L380.1,125.9 L380.9,128.4 L380.9,128.5 L382,132.2 L381.8,133.8 L380,135.6 L379.5,136.7 L378.4,137.6 L378.7,140.8 L378.4,141.3 L379,143.7 L379.8,144.2 L381.4,146 L381,148.8 L380.6,150.7 L379.7,151.9 L376.5,152.2 L374.8,153 L374,153.2 L373.6,152.8 L371.8,151.6 L370.3,151.4 L368.2,152.2 L365.9,152.6 L364.3,155.1 L363.9,155.8 L363.5,156.6 L362.6,156.6 L360.4,158 L358.9,160.1 L357.3,159.7 L355.3,161.2 L355.2,161.2 L354,161.5 L350.9,162.5 L349.5,163.6 L348.5,166 L348.7,166.3 L347.9,169.7 L346.9,170.9 L346.4,172.6 L344.8,176.8 L343.6,177.7 L342.9,179.5 L343.6,180.9 L344.1,184.7 L345.4,186.5 L344.8,187.5 L344.9,189 L344.5,191.4 L344.8,192.3 L343.5,196.3 L342.7,196.2 L343.9,197.7 L344.1,196.4 L346,196.1 L346.2,195 L347.7,194.4 L348.3,195.8 L349.1,196.8 L350.2,198.6 L349.6,199.5 L350,201.2 L352.1,203.4 L354.1,203.6 L355.8,204.6 L356.7,204.2 L359.2,202.6 L359.1,201.7 L360.2,200.9 L361.2,201.2 L363.1,200 L365.3,201.1 L366.3,200.5 L367.4,198.3 L368.4,198 L369.3,196.8 L370.3,194 L371.1,193.8 L370.9,192 L371.6,191 L370,190 L369.2,187.3 L369.9,186.2 L370,186.1 L372.2,184.8 L372.9,184.3 L374.2,183.7 L376.1,185.7 L376.9,185.4 L378.7,185.4 L378.8,185.4 L380.1,185.8 L380.2,186.8 L382.4,188.2 L383.4,187.3 L384.4,186.9 L385.8,186.6 L388,184.4 L389.1,184 L391,183.6 L392.9,183.9 L393.6,183.4 L395.1,181.5 L395.2,180.6 L397.4,179.6 L399,177.5 L399.4,176.7 L399.7,176.7 L401.5,175.7 L402.2,174.5 L404.3,172.8 L405,173.4 L405.8,172.4 L406.8,171.5 L407,170.8 Z","cx":381.7,"cy":155.7},"CE":{"nome":"Ceará","d":"M411.8,102.2 L410.8,102.1 L409.1,102.6 L407,102.6 L402.8,103.3 L400.8,103.1 L400.1,103.6 L400.8,104.2 L400.9,105.2 L400.1,106.8 L399,109 L400.1,109.4 L400.4,110.8 L399.6,111.6 L400,113.2 L401.1,113.6 L401.1,115.9 L401.3,116.8 L401.8,117.4 L402.4,118.7 L402.9,119.5 L402.9,119.5 L402.6,121.3 L402.3,121.8 L401.9,123.1 L401.1,124.4 L401.9,125.6 L401.2,127.4 L401,128.2 L402.6,130.1 L403.1,131 L404.9,132 L404.8,135.4 L404.9,136.1 L405.2,137.9 L405.2,139.5 L405.6,142.1 L405.2,143.1 L405.8,143.8 L405.9,145.3 L406.8,146.8 L406.7,148.8 L407.3,150.1 L407.6,151 L410.5,151.7 L411.8,152.6 L411.1,154.3 L410.7,156.1 L410.1,157.8 L409.9,159.1 L411,159.7 L412.1,159.3 L413.4,159.1 L414.4,159.8 L417.5,159.4 L417.7,159.4 L419.5,159.2 L421.2,160.5 L421.9,161.2 L422.9,161.1 L423.1,162.3 L423.8,162.8 L424.1,162.9 L425.3,163.5 L426.8,164.2 L427.3,164.8 L427.4,165.9 L428.4,165.4 L429,165.8 L429,165.8 L429.9,164.6 L432,163 L432.1,163 L432.5,162.4 L434.1,159.3 L434,158.3 L433.2,157.9 L432.9,157.4 L432.6,155.7 L432.6,155.7 L431.5,155 L431.5,154 L432.6,153.2 L433.3,152.4 L432.8,152 L432.6,151.4 L432.9,150.4 L433.4,149.2 L433.4,149.2 L434.2,147.8 L433.9,147 L433.8,146.2 L434.5,145.3 L435.1,144 L435.9,143.2 L436.7,143.4 L437.5,143.3 L437.7,142.6 L438.8,141.7 L438.9,141.5 L440.1,139.4 L439.8,138.3 L440.5,137.7 L442,136.2 L443.1,133.8 L443.4,133.6 L443.5,132.9 L443.4,132.6 L444.8,130.5 L445.2,128.9 L447.4,128.4 L447.6,128.3 L448.7,128 L450,127.7 L449.1,126 L446.5,125.3 L445.7,125 L443.7,122.6 L442.7,122 L439,118.5 L438.1,117.3 L435.9,115 L435.1,113.5 L433.6,113.3 L432.8,113.2 L430.9,111.5 L429.4,110.4 L427.8,109.7 L426.6,108.7 L425.4,107.3 L423.9,106.9 L421.8,105.5 L419.7,104.5 L417,102.9 L414.1,102.2 L411.8,102.2 Z","cx":421.9,"cy":135.7},"RN":{"nome":"Rio Grande do Norte","d":"M459.2,147.4 L461.1,146.3 L461.7,146.2 L461.9,146.5 L461.7,147.1 L462.6,148 L463.2,147.9 L464.1,147.8 L464.2,147.8 L465.8,148.6 L466.9,148.6 L468,148.6 L468.1,148.6 L469.5,148.1 L469.8,148.2 L470.5,148.6 L472.2,148.6 L472.6,148.7 L473.1,148.9 L473.4,149.3 L474.8,149.1 L475.2,149.4 L475.8,149.5 L476.2,148.8 L478,148.6 L477.2,146.4 L477.2,146.1 L476.4,144.8 L476.4,144.2 L476.1,142.2 L475.7,141.2 L475.1,139.2 L474.8,137.6 L474.4,136.4 L473.6,134.6 L472.9,133.2 L471.6,131.8 L470,131.3 L467.9,130.8 L466.5,130.6 L464.9,130.5 L464.1,130.8 L461.6,131.1 L460.3,130.8 L456.6,130.8 L454.8,129.5 L453.6,128.8 L451.4,129.2 L450.4,128.3 L450,127.7 L448.7,128 L447.6,128.3 L447.4,128.4 L445.2,128.9 L444.8,130.5 L443.4,132.6 L443.5,132.9 L443.4,133.6 L443.1,133.8 L442,136.2 L440.5,137.7 L439.8,138.3 L440.1,139.4 L438.9,141.5 L438.8,141.7 L437.7,142.6 L437.5,143.3 L436.7,143.4 L435.9,143.2 L435.1,144 L434.5,145.3 L433.8,146.2 L433.9,147 L435.2,146.6 L435.3,147.6 L436.6,148.2 L437.3,148.9 L438,148.6 L439.4,149.1 L440,148.3 L440.5,148.5 L441.8,147.7 L442.8,146.7 L443.6,145.6 L444.4,144.7 L445.5,144.7 L446.7,144.4 L448.4,143.5 L449.9,142.8 L451,143.1 L451.2,144.4 L450.2,145.2 L449,146.4 L448.3,147.4 L448.4,148 L447.4,149.2 L447.1,151.4 L449.2,151.2 L449.8,151.7 L450.2,152.9 L451.2,152.6 L452.2,152 L452.6,151.7 L453,151.4 L453.6,152.4 L454.2,152 L455.1,151.7 L456.4,153 L456,154 L457.3,154.2 L458.4,153.5 L458.5,153.1 L458.7,153.1 L458.8,151.7 L459,150.2 L460,150.4 L459.4,149 L458.9,148.5 L459.2,147.4 Z","cx":455.4,"cy":143.7},"PB":{"nome":"Paraíba","d":"M446.1,161.3 L446.7,160.7 L447.8,159.6 L448.4,159.6 L449.2,158.8 L449.9,158.6 L450.9,159 L452.4,159.9 L452.9,160.2 L453.3,161.1 L452.8,161.4 L452.8,161.4 L452.1,161.6 L450.7,163.1 L451.1,163.9 L451.2,164.2 L451.2,165 L451,165.2 L448.8,167.1 L451.2,168 L451.3,169.3 L451.1,169.9 L452.8,171.4 L453.6,171.5 L454.2,170.9 L455.7,170.1 L456.9,169.7 L457.6,169.1 L458.3,166.9 L458.8,166.5 L459.9,166.7 L460.4,165.3 L462.1,165.6 L462.7,164.8 L463.8,165 L465.1,165.3 L465.3,165.4 L466,165.1 L466.8,164.8 L467.5,164.6 L467.9,164.5 L469.3,164 L470,163.5 L471.1,163.3 L471.4,161.6 L471.5,161.2 L472.3,161.1 L473.1,160.7 L473.4,160.4 L473.5,160.4 L474.2,160 L475.7,160.1 L477.8,160.9 L477.8,161.4 L479.4,161.9 L479.6,162 L480,160 L480,158.2 L479.5,155.8 L479.3,155.5 L479.2,154.8 L478.8,153.4 L478.5,152.2 L478.4,151.6 L478,150.1 L478,148.6 L476.2,148.8 L475.8,149.5 L475.2,149.4 L474.8,149.1 L473.4,149.3 L473.1,148.9 L472.6,148.7 L472.2,148.6 L470.5,148.6 L469.8,148.2 L469.5,148.1 L468.1,148.6 L468,148.6 L466.9,148.6 L465.8,148.6 L464.2,147.8 L464.1,147.8 L463.2,147.9 L462.6,148 L461.7,147.1 L461.9,146.5 L461.7,146.2 L461.1,146.3 L459.2,147.4 L458.9,148.5 L459.4,149 L460,150.4 L459,150.2 L458.8,151.7 L458.7,153.1 L458.5,153.1 L458.4,153.5 L457.3,154.2 L456,154 L456.4,153 L455.1,151.7 L454.2,152 L453.6,152.4 L453,151.4 L452.6,151.7 L452.2,152 L451.2,152.6 L450.2,152.9 L449.8,151.7 L449.2,151.2 L447.1,151.4 L447.4,149.2 L448.4,148 L448.3,147.4 L449,146.4 L450.2,145.2 L451.2,144.4 L451,143.1 L449.9,142.8 L448.4,143.5 L446.7,144.4 L445.5,144.7 L444.4,144.7 L443.6,145.6 L442.8,146.7 L441.8,147.7 L440.5,148.5 L440,148.3 L439.4,149.1 L438,148.6 L437.3,148.9 L436.6,148.2 L435.3,147.6 L435.2,146.6 L433.9,147 L434.2,147.8 L433.4,149.2 L433.4,149.2 L432.9,150.4 L432.6,151.4 L432.8,152 L433.3,152.4 L432.6,153.2 L431.5,154 L431.5,155 L432.6,155.7 L432.6,155.7 L432.9,157.4 L433.2,157.9 L434,158.3 L434.1,159.3 L432.5,162.4 L432.1,163 L433.6,164.6 L435.2,164.2 L435.5,164.2 L436.5,163.7 L437,164.4 L438.1,165.5 L439.2,165.2 L439.4,165.5 L440,164.9 L440.8,165 L441.3,164.8 L442,163.9 L443.7,163.4 L443.9,163 L443.9,162.8 L444.1,162.7 L445.5,161.8 L446.1,161.3 Z","cx":454.5,"cy":156.2},"PE":{"nome":"Pernambuco","d":"M399.7,176.7 L400.7,177 L402.7,176.6 L402.8,177.6 L404.6,178.4 L405.9,179.8 L406.3,181.4 L408.1,182.7 L406.9,186 L407.6,186.1 L408.7,186.5 L411.2,184.8 L412,185.1 L413,181.4 L413.8,181.2 L414.7,181.8 L416.3,181.1 L416.6,181.1 L417.9,179.6 L417.6,178.2 L420.3,177.7 L420.7,176.1 L422.7,175.2 L424.2,174.7 L425.2,175.1 L425.8,176.7 L427.8,177 L429.2,177.9 L430.4,177.7 L432.2,178.6 L432.3,179.4 L433.4,179.8 L433.8,178.2 L435.1,178.7 L434.5,179.9 L435.9,180.9 L436.9,180.3 L437,182.3 L437.9,184.6 L438.9,183.5 L439.7,182.6 L440.7,182.4 L441.4,181.6 L443,179.5 L443.8,178.4 L444.5,179.6 L445.3,180.4 L446.6,179.9 L446.7,180 L448.2,180.7 L449.7,182.3 L450.3,183.3 L450.7,183.1 L451,183.7 L452.4,184.4 L452.4,184.3 L453.3,184.9 L453.9,185.2 L454.6,183.9 L455.6,183.9 L456.8,184.1 L457.7,184.6 L459.2,183.7 L460.4,183.2 L461,183.1 L461.8,182.6 L462.9,180.9 L463.8,180.7 L464,180.6 L463.8,179.8 L464.9,179.2 L465.5,179.2 L465.9,179 L467.2,178.8 L467.5,178.7 L468.7,179.2 L469.6,178.9 L470.4,178.4 L470.6,178.4 L471,178.1 L472.6,178.3 L473.3,178.6 L474.7,178.9 L475.7,179.3 L476,178.6 L476.3,177.7 L476.5,176.5 L477,175.4 L478.1,172.4 L478.5,170.6 L478.7,169.7 L479.3,168.3 L479.7,167.2 L479.5,165.8 L479.5,165.4 L479.4,163.8 L479.6,162 L479.4,161.9 L477.8,161.4 L477.8,160.9 L475.7,160.1 L474.2,160 L473.5,160.4 L473.4,160.4 L473.1,160.7 L472.3,161.1 L471.5,161.2 L471.4,161.6 L471.1,163.3 L470,163.5 L469.3,164 L467.9,164.5 L467.5,164.6 L466.8,164.8 L466,165.1 L465.3,165.4 L465.1,165.3 L463.8,165 L462.7,164.8 L462.1,165.6 L460.4,165.3 L459.9,166.7 L458.8,166.5 L458.3,166.9 L457.6,169.1 L456.9,169.7 L455.7,170.1 L454.2,170.9 L453.6,171.5 L452.8,171.4 L451.1,169.9 L451.3,169.3 L451.2,168 L448.8,167.1 L451,165.2 L451.2,165 L451.2,164.2 L451.1,163.9 L450.7,163.1 L452.1,161.6 L452.8,161.4 L452.8,161.4 L453.3,161.1 L452.9,160.2 L452.4,159.9 L450.9,159 L449.9,158.6 L449.2,158.8 L448.4,159.6 L447.8,159.6 L446.7,160.7 L446.1,161.3 L445.5,161.8 L444.1,162.7 L443.9,162.8 L443.9,163 L443.7,163.4 L442,163.9 L441.3,164.8 L440.8,165 L440,164.9 L439.4,165.5 L439.2,165.2 L438.1,165.5 L437,164.4 L436.5,163.7 L435.5,164.2 L435.2,164.2 L433.6,164.6 L432.1,163 L432,163 L429.9,164.6 L429,165.8 L429,165.8 L428.4,165.4 L427.4,165.9 L427.3,164.8 L426.8,164.2 L425.3,163.5 L424.1,162.9 L423.8,162.8 L423.1,162.3 L422.9,161.1 L421.9,161.2 L421.2,160.5 L419.5,159.2 L417.7,159.4 L417.5,159.4 L414.4,159.8 L413.4,159.1 L412.1,159.3 L411,159.7 L409.9,159.1 L409.6,160.1 L408.3,160.6 L407.6,161.2 L408.7,163.4 L408.1,164.7 L409.5,165.4 L409.7,167.3 L409.5,167.7 L409.3,168.1 L409.3,168.1 L408.9,169.1 L407,170.8 L406.8,171.5 L405.8,172.4 L405,173.4 L404.3,172.8 L402.2,174.5 L401.5,175.7 L399.7,176.7 Z","cx":442.6,"cy":171.1},"AL":{"nome":"Alagoas","d":"M440.7,182.4 L439.7,182.6 L438.9,183.5 L437.9,184.6 L438.2,184.8 L438.3,185.6 L439.9,186 L440.8,186.9 L442.1,187.2 L442.8,187.7 L444.9,188.8 L445,189 L447.4,189.8 L449.4,190.9 L450.3,191.7 L451.4,191.9 L453.7,193.3 L453.7,193.9 L453.7,194 L454.1,194.6 L454.5,194.9 L454.9,195.3 L455,195.4 L456.5,196.4 L456.7,196.4 L457,196.4 L457.6,196.2 L458.1,196.8 L458.4,198.3 L459.3,198.4 L459.4,198.4 L460.5,199.3 L461.6,197.4 L462.2,196.4 L464.9,193.7 L465.8,192.3 L466.5,191.2 L467.1,190.3 L467.9,189.4 L468.7,189 L470.7,186.5 L471.2,186 L471.8,184.9 L472.8,184 L473.4,183.3 L474,182.3 L474.6,181.2 L475.7,179.3 L474.7,178.9 L473.3,178.6 L472.6,178.3 L471,178.1 L470.6,178.4 L470.4,178.4 L469.6,178.9 L468.7,179.2 L467.5,178.7 L467.2,178.8 L465.9,179 L465.5,179.2 L464.9,179.2 L463.8,179.8 L464,180.6 L463.8,180.7 L462.9,180.9 L461.8,182.6 L461,183.1 L460.4,183.2 L459.2,183.7 L457.7,184.6 L456.8,184.1 L455.6,183.9 L454.6,183.9 L453.9,185.2 L453.3,184.9 L452.4,184.3 L452.4,184.4 L451,183.7 L450.7,183.1 L450.3,183.3 L449.7,182.3 L448.2,180.7 L446.7,180 L446.6,179.9 L445.3,180.4 L444.5,179.6 L443.8,178.4 L443,179.5 L441.4,181.6 L440.7,182.4 Z","cx":457.1,"cy":186.1},"SE":{"nome":"Sergipe","d":"M454.1,194.6 L453.7,194 L453.7,193.9 L453.7,193.3 L451.4,191.9 L450.3,191.7 L449.4,190.9 L447.4,189.8 L445,189 L444.9,188.8 L442.8,187.7 L442.1,187.2 L440.8,186.9 L440.1,187.8 L440.8,191.8 L442,192 L443.4,193.4 L443.3,194.4 L443.6,194.8 L443.7,195.5 L443.7,196.7 L444,197.3 L442.7,198.6 L443.1,199.6 L443.2,200.6 L443.2,201.7 L441.2,202.6 L440.3,201.9 L439.1,202.1 L438.3,202 L437.9,203.1 L438.3,204.8 L438.6,204.9 L439.5,206 L440.3,208 L441.1,208.2 L440.9,210 L441,210.1 L442.9,211.8 L443.3,212.3 L444.8,212.8 L445.3,212.2 L446,212.6 L448.6,211.5 L448.9,211.3 L449.9,209.3 L451.2,207.7 L452.7,205.1 L454.9,202.4 L457.1,201 L459.4,199.8 L460.5,199.3 L459.4,198.4 L459.3,198.4 L458.4,198.3 L458.1,196.8 L457.6,196.2 L457,196.4 L456.7,196.4 L456.5,196.4 L455,195.4 L454.9,195.3 L454.5,194.9 L454.1,194.6 Z","cx":447.7,"cy":199.3},"BA":{"nome":"Bahia","d":"M424.2,174.7 L422.7,175.2 L420.7,176.1 L420.3,177.7 L417.6,178.2 L417.9,179.6 L416.6,181.1 L416.3,181.1 L414.7,181.8 L413.8,181.2 L413,181.4 L412,185.1 L411.2,184.8 L408.7,186.5 L407.6,186.1 L406.9,186 L408.1,182.7 L406.3,181.4 L405.9,179.8 L404.6,178.4 L402.8,177.6 L402.7,176.6 L400.7,177 L399.7,176.7 L399.4,176.7 L399,177.5 L397.4,179.6 L395.2,180.6 L395.1,181.5 L393.6,183.4 L392.9,183.9 L391,183.6 L389.1,184 L388,184.4 L385.8,186.6 L384.4,186.9 L383.4,187.3 L382.4,188.2 L380.2,186.8 L380.1,185.8 L378.8,185.4 L378.7,185.4 L376.9,185.4 L376.1,185.7 L374.2,183.7 L372.9,184.3 L372.2,184.8 L370,186.1 L369.9,186.2 L369.2,187.3 L370,190 L371.6,191 L370.9,192 L371.1,193.8 L370.3,194 L369.3,196.8 L368.4,198 L367.4,198.3 L366.3,200.5 L365.3,201.1 L363.1,200 L361.2,201.2 L360.2,200.9 L359.1,201.7 L359.2,202.6 L356.7,204.2 L355.8,204.6 L354.1,203.6 L352.1,203.4 L350,201.2 L349.6,199.5 L350.2,198.6 L349.1,196.8 L348.3,195.8 L347.7,194.4 L346.2,195 L346.5,196.3 L345.3,197.1 L345,198.8 L341.3,200.9 L340.3,203.1 L339.6,203.3 L339.5,204.8 L338.6,204.9 L336,209 L336,210.4 L337.4,212.2 L338.5,212.1 L341.4,213.3 L341.8,213.5 L341.1,213.6 L338.4,213.6 L339.1,214.3 L338.2,215.1 L338.7,215.9 L338.2,216.6 L339,217.6 L338.1,218.9 L338.3,219.6 L338.3,222.7 L339.3,223.1 L339.6,224.7 L340.4,224.7 L340.4,224.7 L339.2,225.6 L339.4,228 L338.8,230.4 L341.4,229.9 L339.2,231.7 L338.8,234.1 L339.2,234.9 L341.6,234.2 L342,234.7 L339.8,236.4 L340.3,236.8 L339.8,238.3 L340.8,238.6 L339.9,239.9 L339.6,242.9 L340.2,243.7 L340,244.2 L340.6,245.6 L342.1,246.5 L344,248.1 L342.8,249.2 L343,251.9 L342.6,252 L342.5,252.1 L342.3,254.6 L342.4,254.6 L343.2,255.8 L341.9,259.6 L343.2,258.2 L346,257.7 L347.5,256.4 L351.3,254.1 L352.6,253 L353.9,253.1 L354.6,252.2 L356.6,251.2 L357.1,249.9 L358.2,249.5 L360.5,247.8 L362.3,247.1 L363.7,246.8 L366.8,247.2 L367.7,247 L370,247.9 L369.5,248.5 L368.8,250.7 L368.8,251.8 L370.9,252.6 L373.1,253.9 L373.1,253.9 L373.6,253.6 L375.8,252 L377.4,251.8 L380.3,252.5 L381.1,253.2 L384.2,255.5 L385.5,256 L386,256.4 L388.4,257.7 L388.6,257.8 L389.7,257.3 L391.2,258.4 L392.4,258.4 L394.2,257.5 L394.2,257.5 L394.8,258 L398.5,261.4 L399.6,262.4 L399.6,262.5 L399.9,264.3 L400,265.6 L402.3,266 L406.3,264.4 L406.9,265.2 L407.7,264.7 L408.4,265.4 L410,266.3 L410.8,265.8 L411.1,266.4 L413.4,266.4 L414.8,267.7 L416.3,268.9 L417.4,268.9 L418.1,270.3 L417.3,272.4 L416.1,273.3 L415,274.5 L414.4,276.2 L413,276.1 L412.5,277.4 L412.6,277.7 L412.9,280.2 L411.4,280.1 L411.3,280.2 L411,280.1 L410.3,280.1 L409.2,283.4 L409.6,285.1 L408.9,286 L410,287.2 L410.4,287.7 L411.3,289.2 L412.1,289.3 L413.4,290.8 L413.6,290.8 L413.7,292.8 L413.6,293.9 L413.6,293.9 L417.4,296.4 L420.4,298.4 L420.8,297.1 L422.6,294.1 L425.4,292 L426.9,290.2 L426.2,287.1 L426,283.5 L427.1,280.1 L426.8,278.5 L427.3,277.7 L427.8,274.4 L428.5,273.2 L428.4,272 L429.2,270 L430.4,267 L429.9,265.9 L429.4,264.6 L428.9,261.1 L428.6,257.3 L428.2,253.5 L427.8,253 L428.2,250.1 L428.4,248.9 L428.7,246.3 L429.5,242.4 L429.2,242 L429,241.7 L428.9,241.6 L428.7,240 L429,239.4 L429.9,239 L429.4,237.8 L429.9,236.8 L429.2,235.9 L429.6,233.6 L431.1,232.7 L432.9,231.1 L433.7,231.1 L435.1,231.1 L437.1,229.8 L437.4,229.4 L440.5,225.8 L442.1,223.5 L443.6,221.3 L444.7,219.6 L446.8,215 L448.9,211.3 L448.6,211.5 L446,212.6 L445.3,212.2 L444.8,212.8 L443.3,212.3 L442.9,211.8 L441,210.1 L440.9,210 L441.1,208.2 L440.3,208 L439.5,206 L438.6,204.9 L438.3,204.8 L437.9,203.1 L438.3,202 L439.1,202.1 L440.3,201.9 L441.2,202.6 L443.2,201.7 L443.2,200.6 L443.1,199.6 L442.7,198.6 L444,197.3 L443.7,196.7 L443.7,195.5 L443.6,194.8 L443.3,194.4 L443.4,193.4 L442,192 L440.8,191.8 L440.1,187.8 L440.8,186.9 L439.9,186 L438.3,185.6 L438.2,184.8 L437.9,184.6 L437,182.3 L436.9,180.3 L435.9,180.9 L434.5,179.9 L435.1,178.7 L433.8,178.2 L433.4,179.8 L432.3,179.4 L432.2,178.6 L430.4,177.7 L429.2,177.9 L427.8,177 L425.8,176.7 L425.2,175.1 L424.2,174.7 Z","cx":394.4,"cy":225.9},"MG":{"nome":"Minas Gerais","d":"M322.2,298.6 L321.1,299.4 L320,299.7 L320,299.8 L318.9,300.5 L318,299.6 L315.5,298.5 L315,298.3 L314.1,298.8 L310.3,298.5 L308.7,298.6 L307.1,298 L306.6,298.2 L305.4,299.2 L303.5,299.4 L303,300.7 L302.5,301.3 L301.5,302.2 L300.1,300.9 L299.4,301 L297.2,301.8 L296.8,301.8 L296.3,302.3 L293.5,301.7 L292.8,302.6 L290.5,302.8 L289.5,303.7 L288,305.8 L287.3,308 L285.9,308.5 L284.8,309.1 L284.7,309.5 L283.7,310.7 L283.1,312.1 L283.7,312.8 L282.4,312.7 L282.4,314.2 L281.1,315.5 L281.2,316.8 L281.6,320.5 L283,319.3 L283.5,319 L285.4,318.4 L286.3,317.7 L286.9,317.1 L288.3,316.7 L289.7,317.8 L291.7,317.8 L292.5,317.8 L293.3,318.4 L295,318.6 L296.9,318.5 L298.6,318.4 L300.5,319.1 L303,319 L302.3,320.9 L302.8,322.3 L302.9,322.7 L303.8,323.4 L304.6,322.8 L305.3,321.4 L306.2,321.6 L306.5,324.5 L307.5,324.9 L307.7,324.5 L307.5,322.9 L308.2,321.5 L309.4,321.3 L310.4,321.5 L311.7,321.1 L312.8,321 L315.6,321 L315.8,320 L317.4,321.3 L318.6,319.9 L319.6,321 L319.9,320.4 L320.1,319.3 L321.2,319.2 L322.7,320 L323.8,319.3 L324.6,319 L326.5,320.9 L327.7,322.2 L327.7,322.3 L327.2,323.1 L327,324.7 L327.8,325.6 L328.8,326.2 L328.9,326.5 L328.8,326.6 L329.3,328 L328.3,328.7 L327.8,330.2 L327.8,330.2 L328.4,331.5 L328.8,332.5 L329.1,334 L329.1,334.4 L330,335.4 L330.6,336.6 L330.4,337.4 L332,337.2 L333.2,336.7 L333.5,336.6 L334.9,336.8 L335.3,337.5 L336.6,338.2 L336.6,339.2 L336,340.3 L335.3,340.6 L335.1,341.8 L334.4,342.6 L335.3,344.6 L334.9,344.8 L334,345.7 L335.5,346.4 L334.9,347 L334.6,346.9 L334.5,347.4 L334,348.6 L334.7,349.3 L335.3,350.2 L336.1,350.6 L337.2,351.3 L337.6,352.3 L338,353.1 L337,353.6 L338.7,354.4 L338.2,355.1 L338.6,356.1 L340.5,355.6 L342.2,356 L343.4,355.4 L344.4,355.7 L345.7,355.3 L346.3,354.4 L345.2,354 L346.6,352.9 L346.1,352.5 L346.8,351.9 L346.9,352.9 L348,352.3 L348,352.9 L349.2,352.2 L349.9,352.5 L350.2,353 L351.8,352.4 L353,351.4 L353.5,351 L353.8,350.9 L355.5,350.7 L357,350.1 L357.4,349.8 L357.4,349.8 L357.5,349.7 L359.2,349.4 L359.2,349.5 L360.7,348.9 L361.7,347.9 L362.9,347.9 L364.1,348.1 L365,347.7 L365.1,347.6 L367.6,346.5 L370.2,345.5 L370.9,345.6 L371.4,345.8 L372.3,345.4 L374.2,345.4 L375.3,344.7 L375.6,344.8 L376.8,345.1 L378,345.1 L378,345.1 L377.8,346 L379.5,345.1 L380.7,344.6 L383.7,343.1 L384.4,342.7 L386.2,342 L386.2,342 L387.2,341.5 L388.6,341.1 L387.5,339.5 L387.6,339.4 L388.7,338.2 L388.5,337.5 L388.9,336.4 L389.1,336.3 L389.3,334.8 L389.4,334.1 L389.7,333.7 L390.4,333 L390.8,332.4 L390.8,332.3 L390,331.7 L392.1,331.2 L392.7,330.1 L392.7,329.4 L393.4,329.1 L393.7,328.1 L394,325.5 L394.3,325.4 L394.2,324.7 L393.8,324.6 L393.5,324.1 L394,323.3 L394.6,322.7 L394.8,322 L395.9,322 L399,322 L399,322 L400.4,318.6 L400.8,318.7 L401.8,318 L401.9,316.5 L402,315.3 L404.4,313.2 L404.5,312.1 L404.9,309.9 L404.9,309.6 L404.5,308.3 L403.3,307.5 L403.3,306.1 L402.4,305.4 L401.1,304.9 L401.2,304.2 L402.3,304.2 L403.8,304.7 L405.1,304.4 L404.8,302.9 L403.5,302.2 L403.8,300.8 L403.8,299.9 L401.8,299.7 L402.3,299.3 L402.1,298 L403.4,296.2 L406.9,295.5 L405.3,294 L406.5,293.6 L408.2,294.3 L409.9,292.8 L411.8,293.2 L413.6,293.9 L413.7,292.8 L413.6,290.8 L413.4,290.8 L412.1,289.3 L411.3,289.2 L410.4,287.7 L410,287.2 L408.9,286 L409.6,285.1 L409.2,283.4 L410.3,280.1 L411,280.1 L411.3,280.2 L411.4,280.1 L412.9,280.2 L412.6,277.7 L412.5,277.4 L413,276.1 L414.4,276.2 L415,274.5 L416.1,273.3 L417.3,272.4 L418.1,270.3 L417.4,268.9 L416.3,268.9 L414.8,267.7 L413.4,266.4 L411.1,266.4 L410.8,265.8 L410,266.3 L408.4,265.4 L407.7,264.7 L406.9,265.2 L406.3,264.4 L402.3,266 L400,265.6 L399.9,264.3 L399.6,262.5 L399.6,262.4 L398.5,261.4 L394.8,258 L394.2,257.5 L394.2,257.5 L392.4,258.4 L391.2,258.4 L389.7,257.3 L388.6,257.8 L388.4,257.7 L386,256.4 L385.5,256 L384.2,255.5 L381.1,253.2 L380.3,252.5 L377.4,251.8 L375.8,252 L373.6,253.6 L373.1,253.9 L373.1,253.9 L370.9,252.6 L368.8,251.8 L368.8,250.7 L369.5,248.5 L370,247.9 L367.7,247 L366.8,247.2 L363.7,246.8 L362.3,247.1 L360.5,247.8 L358.2,249.5 L357.1,249.9 L356.6,251.2 L354.6,252.2 L353.9,253.1 L352.6,253 L351.3,254.1 L347.5,256.4 L346,257.7 L343.2,258.2 L341.9,259.6 L343.2,255.8 L342.4,254.6 L342.3,254.6 L340.7,255.6 L338.9,255 L338.9,253.9 L336.7,252.5 L336,253.9 L336.7,256.9 L336.4,256.9 L335.2,257.3 L332.3,256.3 L331.5,256.9 L331.3,258.8 L332.1,259.8 L332.4,260.9 L331.4,261.8 L331.2,263.3 L332,263.9 L332.9,267.2 L331.2,267.8 L328.9,267.9 L326.8,269.3 L326.8,269.5 L326.6,271.5 L325,274.7 L325.5,276.1 L327,276.8 L327.8,278 L328,279.9 L329,281.2 L328.3,282.3 L326.3,283.6 L324.6,285.9 L324.3,285.6 L324.1,286.7 L324,287.3 L324.9,288.2 L326.7,288.4 L327.3,289.2 L326,292 L327.1,294.7 L325.6,295.9 L325.3,296.2 L323.1,297.2 L323.1,298.1 L322.2,298.6 Z","cx":353.1,"cy":306.5},"ES":{"nome":"Espírito Santo","d":"M400.8,318.7 L400.4,318.6 L399,322 L399,322 L395.9,322 L394.8,322 L394.6,322.7 L394,323.3 L393.5,324.1 L393.8,324.6 L394.2,324.7 L394.3,325.4 L394,325.5 L393.7,328.1 L393.4,329.1 L393.7,329.2 L394.6,329.5 L395,330.4 L395.1,331.3 L395.3,333.4 L396.2,333.9 L397.2,334.2 L398.3,334.6 L400.7,335.1 L402.4,334.9 L404.6,335.9 L405,334.5 L406.4,332 L407,330.4 L407.7,330 L409.3,329.1 L411.7,326.2 L413,323.5 L413.7,322.5 L414,320.1 L414.4,319.6 L415.7,317.1 L417.4,315.5 L418.6,315 L420.1,310.6 L419.8,308 L419.4,303.1 L419.7,300.7 L420.4,298.4 L417.4,296.4 L413.6,293.9 L413.6,293.9 L411.8,293.2 L409.9,292.8 L408.2,294.3 L406.5,293.6 L405.3,294 L406.9,295.5 L403.4,296.2 L402.1,298 L402.3,299.3 L401.8,299.7 L403.8,299.9 L403.8,300.8 L403.5,302.2 L404.8,302.9 L405.1,304.4 L403.8,304.7 L402.3,304.2 L401.2,304.2 L401.1,304.9 L402.4,305.4 L403.3,306.1 L403.3,307.5 L404.5,308.3 L404.9,309.6 L404.9,309.9 L404.5,312.1 L404.4,313.2 L402,315.3 L401.9,316.5 L401.8,318 L400.8,318.7 Z","cx":404.3,"cy":314.9},"RJ":{"nome":"Rio de Janeiro","d":"M359.5,356.2 L357.6,357.1 L357.2,359.4 L356.5,359.9 L358.5,362 L360.2,361.8 L360.8,361 L359.3,359.7 L358.5,359.9 L359.1,358 L360.9,357.7 L363.1,356.3 L363.1,357.7 L365.3,357.8 L367.3,356.6 L368.8,356.3 L369.8,356.3 L372.7,358 L376.1,357.5 L377.6,356.1 L376.2,354.9 L376.9,353.9 L379.1,353.4 L379.3,353.9 L379.2,354.1 L378.3,355.5 L378.2,356.7 L379.4,357 L384,356.5 L387.2,356.5 L388.4,356.6 L391.4,356.5 L392.2,355.1 L392.2,353.9 L391.9,352.3 L392.1,351.8 L394.1,350 L395.6,348.5 L397.4,347.7 L402.4,345.9 L404,345 L404.3,343.6 L403.5,339.9 L403.2,338.3 L404.6,335.9 L402.4,334.9 L400.7,335.1 L398.3,334.6 L397.2,334.2 L396.2,333.9 L395.3,333.4 L395.1,331.3 L395,330.4 L394.6,329.5 L393.7,329.2 L393.4,329.1 L392.7,329.4 L392.7,330.1 L392.1,331.2 L390,331.7 L390.8,332.3 L390.8,332.4 L390.4,333 L389.7,333.7 L389.4,334.1 L389.3,334.8 L389.1,336.3 L388.9,336.4 L388.5,337.5 L388.7,338.2 L387.6,339.4 L387.5,339.5 L388.6,341.1 L387.2,341.5 L386.2,342 L386.2,342 L384.4,342.7 L383.7,343.1 L380.7,344.6 L379.5,345.1 L377.8,346 L378,345.1 L378,345.1 L376.8,345.1 L375.6,344.8 L375.3,344.7 L374.2,345.4 L372.3,345.4 L371.4,345.8 L370.9,345.6 L370.2,345.5 L367.6,346.5 L365.1,347.6 L365,347.7 L364.1,348.1 L362.9,347.9 L361.7,347.9 L360.7,348.9 L359.2,349.5 L359.2,349.4 L357.5,349.7 L357.4,349.8 L357.4,349.8 L358.9,351.3 L359.4,352.3 L361.6,352.5 L362.9,352.4 L363.1,352.1 L364.6,352.3 L365.3,353.2 L363.4,355.4 L361.3,355.4 L359.6,356.1 L359.5,356.2 Z M363,360.1 L365.6,359.4 L364.5,358.5 L362.8,359.5 L363,360.1 Z M369.9,358.1 L367.7,357.9 L367.9,358.4 L369.9,358.1 L371.4,358 L371.4,357.9 L369.9,358.1 Z","cx":377.4,"cy":348.1},"SP":{"nome":"São Paulo","d":"M334.4,342.6 L335.1,341.8 L335.3,340.6 L336,340.3 L336.6,339.2 L336.6,338.2 L335.3,337.5 L334.9,336.8 L333.5,336.6 L333.2,336.7 L332,337.2 L330.4,337.4 L330.6,336.6 L330,335.4 L329.1,334.4 L329.1,334 L328.8,332.5 L328.4,331.5 L327.8,330.2 L327.8,330.2 L328.3,328.7 L329.3,328 L328.8,326.6 L328.9,326.5 L328.8,326.2 L327.8,325.6 L327,324.7 L327.2,323.1 L327.7,322.3 L327.7,322.2 L326.5,320.9 L324.6,319 L323.8,319.3 L322.7,320 L321.2,319.2 L320.1,319.3 L319.9,320.4 L319.6,321 L318.6,319.9 L317.4,321.3 L315.8,320 L315.6,321 L312.8,321 L311.7,321.1 L310.4,321.5 L309.4,321.3 L308.2,321.5 L307.5,322.9 L307.7,324.5 L307.5,324.9 L306.5,324.5 L306.2,321.6 L305.3,321.4 L304.6,322.8 L303.8,323.4 L302.9,322.7 L302.8,322.3 L302.3,320.9 L303,319 L300.5,319.1 L298.6,318.4 L296.9,318.5 L295,318.6 L293.3,318.4 L292.5,317.8 L291.7,317.8 L289.7,317.8 L288.3,316.7 L286.9,317.1 L286.3,317.7 L285.4,318.4 L283.5,319 L283,319.3 L281.6,320.5 L281.6,320.6 L280.2,323 L277.4,323.9 L276.4,325.3 L274.6,327.2 L274.5,327.3 L273.8,329 L273.9,331.3 L272.1,332.7 L270.8,334.6 L271,336.3 L269.8,338.3 L268.1,339.3 L268.6,340.6 L267.3,341.8 L265.4,344.3 L264.5,346.1 L263.7,347 L261.3,348.5 L257.7,350.7 L256.2,351.6 L255.8,352.6 L256.6,352.5 L256.9,352.3 L258,351.8 L259.7,352.3 L260,352.4 L262.1,351.8 L262.7,352.5 L263.9,352.4 L264.2,352.4 L265.8,352.6 L267.1,353 L267.5,351.9 L267.7,351.4 L268.9,351.5 L269,351.5 L270.5,352.3 L270.7,352.4 L271.1,352.7 L272.8,353.1 L273.8,353 L273.9,353 L275.2,353.4 L276.1,352.9 L277.5,353.1 L277.9,353.2 L278.9,353.8 L279.4,354 L281.5,354.7 L281.8,354.6 L282.5,354.8 L283.7,355.6 L284.1,356.7 L286,356.2 L286.7,356.1 L287.4,356.5 L289.4,356.3 L289.7,356.7 L291.3,356.7 L292.2,356.6 L293.2,356.1 L294.1,356.8 L294.2,356.8 L295.9,358.2 L296,358.3 L296.2,358.5 L297.3,359.2 L298.4,360.9 L298.3,361.7 L298.7,363.1 L298.4,363.9 L298.7,365.6 L299,365.9 L299.2,367.4 L298.6,367.9 L299.5,369.1 L299.7,368.9 L300.1,370.3 L301.9,371.7 L301.8,372.8 L303,374 L303,375.1 L303,375.5 L303,375.6 L302.2,377 L302.2,378.4 L303.5,378.8 L304.1,378.5 L304.5,378.6 L307.1,378.5 L308.4,378.5 L311,378.4 L311.7,379.1 L311.4,381.6 L311,382.6 L311.5,383.7 L313.3,382.4 L314.3,383.1 L315.4,382.5 L317.1,386.5 L319.4,384.6 L319.4,383.3 L321.6,381.1 L325.5,378.5 L329.6,375.6 L331.8,373.2 L334.1,371.8 L335.4,371.1 L338,370 L338.5,369.6 L339.1,369.9 L340.6,369.9 L341.2,368.2 L344.8,366.9 L348.3,367.4 L348.8,368 L350.2,367.5 L349.8,366.3 L350.1,365.2 L351.7,364.6 L354.3,363.6 L356.2,361.6 L357,362.2 L358.5,362 L356.5,359.9 L357.2,359.4 L357.6,357.1 L359.5,356.2 L359.6,356.1 L361.3,355.4 L363.4,355.4 L365.3,353.2 L364.6,352.3 L363.1,352.1 L362.9,352.4 L361.6,352.5 L359.4,352.3 L358.9,351.3 L357.4,349.8 L357,350.1 L355.5,350.7 L353.8,350.9 L353.5,351 L353,351.4 L351.8,352.4 L350.2,353 L349.9,352.5 L349.2,352.2 L348,352.9 L348,352.3 L346.9,352.9 L346.8,351.9 L346.1,352.5 L346.6,352.9 L345.2,354 L346.3,354.4 L345.7,355.3 L344.4,355.7 L343.4,355.4 L342.2,356 L340.5,355.6 L338.6,356.1 L338.2,355.1 L338.7,354.4 L337,353.6 L338,353.1 L337.6,352.3 L337.2,351.3 L336.1,350.6 L335.3,350.2 L334.7,349.3 L334,348.6 L334.5,347.4 L334.6,346.9 L334.9,347 L335.5,346.4 L334,345.7 L334.9,344.8 L335.3,344.6 L334.4,342.6 Z M351.5,368.3 L352.3,367.2 L350.9,366.5 L349.6,369.1 L352,368.7 L351.5,368.3 Z","cx":313.5,"cy":348.5},"PR":{"nome":"Paraná","d":"M304.5,378.6 L304.1,378.5 L303.5,378.8 L302.2,378.4 L302.2,377 L303,375.6 L303,375.5 L303,375.1 L303,374 L301.8,372.8 L301.9,371.7 L300.1,370.3 L299.7,368.9 L299.5,369.1 L298.6,367.9 L299.2,367.4 L299,365.9 L298.7,365.6 L298.4,363.9 L298.7,363.1 L298.3,361.7 L298.4,360.9 L297.3,359.2 L296.2,358.5 L296,358.3 L295.9,358.2 L294.2,356.8 L294.1,356.8 L293.2,356.1 L292.2,356.6 L291.3,356.7 L289.7,356.7 L289.4,356.3 L287.4,356.5 L286.7,356.1 L286,356.2 L284.1,356.7 L283.7,355.6 L282.5,354.8 L281.8,354.6 L281.5,354.7 L279.4,354 L278.9,353.8 L277.9,353.2 L277.5,353.1 L276.1,352.9 L275.2,353.4 L273.9,353 L273.8,353 L272.8,353.1 L271.1,352.7 L270.7,352.4 L270.5,352.3 L269,351.5 L268.9,351.5 L267.7,351.4 L267.5,351.9 L267.1,353 L265.8,352.6 L264.2,352.4 L263.9,352.4 L262.7,352.5 L262.1,351.8 L260,352.4 L259.7,352.3 L258,351.8 L256.9,352.3 L256.6,352.5 L255.8,352.6 L255.5,352.9 L254.1,354 L253.1,354.4 L252,355 L250.4,355.9 L249.3,357.4 L249.3,358.9 L248.3,360.9 L247.7,361.9 L245.3,362.9 L244.4,365.3 L244.2,366 L243.8,367.5 L243.8,368.3 L242.7,370 L241.3,370.8 L240.6,372 L241.6,374.7 L241.2,375.4 L240.9,377.4 L240.8,378.3 L240.7,378.7 L240,379.8 L239.2,383.1 L239.6,384.5 L239,385.3 L237.2,388.3 L237.5,390.1 L239.4,391 L241.2,389.7 L242.7,390 L243.1,389.2 L244.9,390 L246.7,391.3 L246.7,392.3 L247,394.1 L246.8,394.9 L248.1,395.8 L248.8,397.5 L249.1,397.9 L249.2,398.4 L251.8,398.8 L251.8,398.8 L251.8,398.8 L252.9,398.4 L255,399.6 L255.1,399.7 L256.7,399.9 L257.8,399.8 L258.2,399.8 L260,399.7 L260.7,399.8 L261.4,400.1 L262.5,400.4 L262.9,400.3 L263.9,400.8 L267.4,401.1 L269,402.2 L271.5,402.6 L275.3,402.6 L276.5,404.3 L276.8,403.6 L278.6,403.2 L278.8,402.8 L277.9,400.5 L278.3,400.1 L278.5,399.7 L279.1,399 L280.6,398.1 L281.7,398.2 L282.8,398.9 L285.2,397.6 L285.3,397.5 L286.1,396 L286.8,395.3 L289.3,396.7 L290.5,395.8 L291.5,396.1 L293.9,395.4 L294.6,395.5 L295.5,395.7 L297.6,397.6 L298.7,398.1 L300.1,397.7 L300.1,397.6 L300.8,397.4 L301.6,397 L303.2,395.6 L306.5,395.1 L306.7,395.1 L310,395 L311,395 L311.6,393.4 L312.5,391.6 L313.9,390 L314.5,388.8 L315.7,388.6 L317.1,386.5 L315.4,382.5 L314.3,383.1 L313.3,382.4 L311.5,383.7 L311,382.6 L311.4,381.6 L311.7,379.1 L311,378.4 L308.4,378.5 L307.1,378.5 L304.5,378.6 Z M249.1,387 L249.4,387 L249.4,387 L249.1,387 Z M252.4,360.4 L252.4,360.4 L252.5,360.4 L252.4,360.4 Z","cx":275.4,"cy":377},"SC":{"nome":"Santa Catarina","d":"M263.9,400.8 L262.9,400.3 L262.5,400.4 L261.4,400.1 L260.7,399.8 L260,399.7 L258.2,399.8 L257.8,399.8 L256.7,399.9 L255.1,399.7 L255,399.6 L252.9,398.4 L251.8,398.8 L251.8,398.8 L249.2,398.4 L248.6,400.7 L248.6,400.9 L248.2,402 L248.1,402.8 L248.3,404.7 L248.8,405.9 L248.8,406.5 L248.8,407.2 L248.1,407.9 L246.8,410 L247,410.1 L248.3,410.2 L249.7,410.3 L250.4,410.1 L251.1,410.3 L252.7,409.3 L253.4,409.6 L253.1,410.5 L254.8,410.3 L256.1,409.2 L256.8,409.1 L257.2,409.7 L257.4,410.6 L258.9,410 L259.5,410.5 L259.7,410.5 L260.8,411.5 L262.6,410.9 L262.7,411.2 L264,410.6 L264.2,411.5 L264.4,411.6 L265.6,411.9 L266.1,411.1 L266.6,412.1 L268,412.2 L268.7,412.3 L269.5,412.6 L271.1,413.9 L271.3,414.5 L271.9,414.4 L273,414 L273.8,414.1 L274.5,415.2 L274.9,415 L276,415.6 L277.8,417 L278.2,417.2 L280.9,418.9 L280.9,419.1 L281.5,420.1 L281.8,419.9 L283.1,421 L284.6,423.7 L285.3,423.9 L286.3,425.5 L288.6,426 L293,426.6 L294.2,426.1 L296.1,426.5 L297.2,427.1 L297.5,428.5 L297.4,428.5 L296.5,428.2 L295.8,429.5 L294.6,429.7 L294.4,431.8 L294.4,432.5 L294.3,434 L293.6,435.5 L292.1,435.6 L292,436.6 L293.3,437.7 L293.4,437.6 L292.4,436.4 L294.3,435.7 L295,435.9 L296.4,436.8 L297.3,437.3 L298.2,436.2 L299.7,434.4 L301.5,432.6 L302.5,431.7 L303.8,430.7 L307.8,428.3 L309.2,426.9 L309.7,424.8 L310.5,422 L310.7,419.8 L311.1,419.3 L311.3,418.6 L312,417.8 L313.8,413.6 L313.2,412.7 L311.9,413 L311,411.9 L310.9,410.6 L311.2,410.6 L312.3,410.4 L312.1,409.3 L311.1,409.7 L311.1,408.7 L310.6,407.4 L310.5,406.8 L310.7,405.7 L310.2,405 L310,404.3 L310.2,402.6 L310.3,402.2 L311,401 L312.3,398 L311.3,397.4 L311,395 L310,395 L306.7,395.1 L306.5,395.1 L303.2,395.6 L301.6,397 L300.8,397.4 L300.1,397.6 L300.1,397.7 L298.7,398.1 L297.6,397.6 L295.5,395.7 L294.6,395.5 L293.9,395.4 L291.5,396.1 L290.5,395.8 L289.3,396.7 L286.8,395.3 L286.1,396 L285.3,397.5 L285.2,397.6 L282.8,398.9 L281.7,398.2 L280.6,398.1 L279.1,399 L278.5,399.7 L278.3,400.1 L277.9,400.5 L278.8,402.8 L278.6,403.2 L276.8,403.6 L276.5,404.3 L275.3,402.6 L271.5,402.6 L269,402.2 L267.4,401.1 L263.9,400.8 Z","cx":281.9,"cy":411.2},"RS":{"nome":"Rio Grande do Sul","d":"M245.5,470.5 L248.2,472.3 L248.8,474.1 L249.2,475.9 L251.7,478 L254.9,479.4 L257.1,478.6 L257.5,477.3 L259.5,476.7 L260.4,475.8 L259.3,475.3 L260.5,473 L261.7,472.9 L260.9,475.1 L261.9,476.9 L261.7,479.1 L260.5,481.6 L259.1,482.6 L257,481.2 L255.5,481.1 L254.9,483.8 L253.9,485.1 L253.1,484.5 L251.3,486.9 L251.9,489.3 L250.8,490.4 L250.7,492.4 L251.9,493.1 L252.5,493.1 L259.8,487.3 L261.7,485 L263.2,482 L264.1,479 L265.7,475.4 L268.1,473.1 L267.9,470.3 L266.2,469.2 L266.6,468.4 L267.4,467.3 L268.9,467.2 L269.2,466 L269.2,464.8 L270.3,462.4 L271.6,462.1 L274,461.8 L273.9,460.4 L275,459.9 L276.2,459.5 L275.5,458.1 L276.1,456.8 L277,456.8 L276.9,453.9 L277.7,454 L278.3,451.9 L279.9,451.3 L279,449.6 L277.5,448.7 L277.9,446.5 L278.2,446.3 L278.7,448.1 L280.8,449.1 L280.9,450.8 L282.4,451.3 L282.6,449.9 L285.8,449.4 L286.2,448.3 L287.2,449 L286.7,452 L284.9,450.5 L285.4,452.1 L285.4,454.7 L284.6,456.2 L282,457.1 L282.1,458.5 L279.4,460.1 L279.6,462 L278.7,464.2 L277.1,465.2 L276.3,464.7 L273.5,468.1 L271.3,468.6 L270.5,469.4 L268.1,469 L269.1,470.1 L268.4,472.9 L271.4,470.1 L276.3,467.2 L279.3,464.8 L283.5,460.8 L284.4,459.8 L289.7,452.1 L290.7,449.7 L291.1,448.8 L291.7,447 L292.4,445.5 L292.9,444.3 L293,444 L293.6,442.9 L294.6,441.1 L294.8,440.8 L296.2,438.8 L297.3,437.3 L296.4,436.8 L295,435.9 L294.3,435.7 L292.4,436.4 L293.4,437.6 L293.3,437.7 L292,436.6 L292.1,435.6 L293.6,435.5 L294.3,434 L294.4,432.5 L294.4,431.8 L294.6,429.7 L295.8,429.5 L296.5,428.2 L297.4,428.5 L297.5,428.5 L297.2,427.1 L296.1,426.5 L294.2,426.1 L293,426.6 L288.6,426 L286.3,425.5 L285.3,423.9 L284.6,423.7 L283.1,421 L281.8,419.9 L281.5,420.1 L280.9,419.1 L280.9,418.9 L278.2,417.2 L277.8,417 L276,415.6 L274.9,415 L274.5,415.2 L273.8,414.1 L273,414 L271.9,414.4 L271.3,414.5 L271.1,413.9 L269.5,412.6 L268.7,412.3 L268,412.2 L266.6,412.1 L266.1,411.1 L265.6,411.9 L264.4,411.6 L264.2,411.5 L264,410.6 L262.7,411.2 L262.6,410.9 L260.8,411.5 L259.7,410.5 L259.5,410.5 L258.9,410 L257.4,410.6 L257.2,409.7 L256.8,409.1 L256.1,409.2 L254.8,410.3 L253.1,410.5 L253.4,409.6 L252.7,409.3 L251.1,410.3 L250.4,410.1 L249.7,410.3 L248.3,410.2 L247,410.1 L246.8,410 L245.5,409.8 L244.1,411.2 L243.4,411.7 L242.5,411.2 L242.2,412.8 L241.3,413.5 L239.8,413 L239,414 L237.6,413.7 L237.1,414.8 L236,415 L234.8,414.7 L233.8,416.7 L232.6,417.9 L231.9,418.7 L230.1,418.7 L229.2,419.7 L228.4,420.1 L228,421 L227.2,421.6 L223.1,423.6 L224.4,424.8 L224.1,425.8 L222.1,425 L221.7,426.6 L220,427.1 L220.3,427.8 L217.9,430.3 L216.6,430.7 L216.4,432.2 L215,434.2 L213.1,434.7 L212.2,436.9 L210.8,438.5 L208.4,441.3 L206.4,442.9 L205.2,443 L204,444.4 L204,445.4 L202.4,447.2 L200.8,448.1 L201.1,449 L203.3,449.6 L205.6,449.4 L206.7,447.2 L209.9,446.9 L212.3,448.3 L213.6,450.4 L214.7,450.7 L215.7,452.1 L216.8,452.5 L218,453.4 L218.5,454.7 L220,455.7 L220.2,459.5 L221.9,459.3 L224.4,457.9 L225.5,456.3 L227.2,458.5 L228.3,458.9 L229.5,461.6 L231.7,462.6 L232.1,462 L234.6,464 L236.2,463.9 L237.6,464.2 L239,465.7 L239.2,466.7 L243.7,470.2 L245.5,470.5 Z","cx":258.9,"cy":444.1},"MS":{"nome":"Mato Grosso do Sul","d":"M252.1,294 L251.1,294.6 L249.6,293.9 L247.6,294.1 L245.4,293.1 L246.6,290.4 L247.8,290 L248.4,289.9 L248.7,284.7 L247,285.2 L245.1,287.5 L244.5,287.5 L243.9,289.3 L242.5,289.1 L241.1,289.9 L238.7,287.6 L235.7,288.1 L234.3,289.4 L230.9,289.7 L230.9,289.7 L228.9,288.3 L226.4,287.6 L225.2,286.1 L225.2,286.1 L220.5,284.8 L219.8,283.7 L217.2,284.3 L214.9,285.7 L211.5,285.4 L209.6,288.2 L208.3,288.8 L208.2,289.8 L206.6,291.4 L203.4,292 L202.6,292.6 L200.7,291.7 L199.7,290.6 L199.6,289.4 L198.8,288.6 L198.5,289.5 L199.3,290.7 L199.2,292 L201,295.8 L202.5,297.1 L201.2,297.2 L198.7,305.5 L199.4,307.2 L198.5,307.2 L194.2,316.4 L197.5,319.1 L193.7,321.5 L194.6,322.6 L194.9,324.3 L195.9,325 L195.7,327.1 L196.3,328.3 L197.5,328.8 L196.3,329.5 L197.5,329.8 L196.7,330.7 L197.8,331.2 L197.4,332.5 L197.6,336.1 L196.3,339.2 L197.2,340.7 L196.2,342.7 L196.8,343.1 L195.9,345.8 L198.9,346.4 L200.6,345.9 L201.7,346.9 L204.1,347.8 L207.5,347.6 L210,348.5 L213.3,347.3 L214.1,345.9 L215.5,345.6 L216.1,347 L217.8,348.2 L222.2,348.3 L223.2,349.5 L223.7,351.7 L225,353.4 L224.4,355.5 L225.3,359.3 L226,360.4 L226.4,362.1 L225.7,363.4 L226.1,365.3 L227.2,366.4 L227.1,368.9 L227.6,369.6 L229.4,369.9 L231.8,369.9 L236.4,367.8 L239.6,369.1 L241.3,370.8 L242.7,370 L243.8,368.3 L243.8,367.5 L244.2,366 L244.4,365.3 L245.3,362.9 L247.7,361.9 L248.3,360.9 L249.3,358.9 L249.3,357.4 L250.4,355.9 L252,355 L253.1,354.4 L254.1,354 L255.5,352.9 L255.8,352.6 L256.2,351.6 L257.7,350.7 L261.3,348.5 L263.7,347 L264.5,346.1 L265.4,344.3 L267.3,341.8 L268.6,340.6 L268.1,339.3 L269.8,338.3 L271,336.3 L270.8,334.6 L272.1,332.7 L273.9,331.3 L273.8,329 L274.5,327.3 L274.6,327.2 L276.4,325.3 L277.4,323.9 L280.2,323 L281.6,320.6 L281.6,320.5 L281.2,316.8 L281.1,315.5 L282.4,314.2 L282.4,312.7 L280.4,310.7 L276.1,308.8 L275,308.6 L273.1,308.3 L271.1,307.4 L270,306.4 L268.3,306.2 L267.1,304.8 L265.2,304.6 L264.3,303.5 L263.2,302.7 L260.2,302.9 L258.6,302.3 L258,301.9 L257.5,301.1 L259,299.5 L260,298.7 L259.3,298.1 L255.8,298.1 L255.3,295.2 L256.2,294.6 L254.2,294.2 L252.1,294 Z","cx":235.5,"cy":322.6},"MT":{"nome":"Mato Grosso","d":"M217,185.4 L212.1,185 L211.1,185.5 L210.3,183.5 L208.1,183.3 L207.3,182.7 L207.6,181.6 L205.6,179.4 L203,178.6 L202.9,177.8 L200.8,177.3 L200.3,174.4 L199.7,172.9 L200.2,170.5 L197.9,167.3 L197.1,163.7 L195.1,160.1 L194.1,159.6 L193.2,160.9 L193.3,163 L192.2,164.9 L191.2,165.6 L192.3,168.9 L192,171.8 L190.7,173.9 L191,175.3 L190.5,176.6 L191.8,176.7 L190.4,177.8 L182,177.9 L166.2,177.8 L151.9,177.8 L153.3,179.4 L152.2,181.6 L152.6,183.5 L151.4,183.6 L151.5,184.5 L151.9,186.2 L153.2,188.3 L152,189.5 L152.8,191.3 L152.4,193 L151.9,193.8 L152.3,196.9 L153.4,198.3 L153.2,202.7 L152.3,205.5 L153.8,205.5 L159.1,205.6 L165.7,205.5 L166.5,206.8 L171.6,207.2 L171.6,208.7 L172.3,209.9 L172.1,211 L170,213 L170.1,216.3 L171.5,217.2 L171.6,218.7 L172.5,219.8 L172.7,221.4 L174,222.6 L171.9,225.9 L171,226.1 L169.9,230.4 L169.1,230.5 L168,231.9 L167.2,234.2 L166.8,235 L166.6,236.7 L163.6,238.2 L162.6,239.7 L165.5,241 L165.8,242.8 L166.6,243.5 L165.4,244.8 L165.8,247.5 L168,251.4 L168.3,257.4 L164.3,257.4 L168.4,262.2 L169.2,272.2 L177.8,272.4 L186.2,272.7 L190.5,272.9 L191.9,272.2 L191.6,275.4 L190.5,276.4 L190,280.7 L191,282 L190.9,283.8 L192.8,286 L195.9,288 L197.2,287.2 L198.8,288.6 L199.6,289.4 L199.7,290.6 L200.7,291.7 L202.6,292.6 L203.4,292 L206.6,291.4 L208.2,289.8 L208.3,288.8 L209.6,288.2 L211.5,285.4 L214.9,285.7 L217.2,284.3 L219.8,283.7 L220.5,284.8 L225.2,286.1 L225.2,286.1 L226.4,287.6 L228.9,288.3 L230.9,289.7 L230.9,289.7 L234.3,289.4 L235.7,288.1 L238.7,287.6 L241.1,289.9 L242.5,289.1 L243.9,289.3 L244.5,287.5 L245.1,287.5 L247,285.2 L248.7,284.7 L248.4,289.9 L247.8,290 L246.6,290.4 L245.4,293.1 L247.6,294.1 L249.6,293.9 L251.1,294.6 L252.1,294 L254.2,294.2 L256.2,294.6 L255.1,291.2 L254.2,290.5 L254.1,289.1 L254.1,287.9 L254.4,285.2 L255.7,282.9 L256.3,282.5 L256.9,279.8 L257.9,279.4 L258.1,279.1 L259.1,278.6 L260.6,276.9 L260.3,276.3 L261.6,275.4 L261,272.7 L262.6,271.7 L263.5,270.5 L264.9,269.9 L266.2,267.5 L269.2,267.4 L269.7,266.8 L270.8,266.6 L272.2,264.5 L272,263.1 L273,262.3 L273.6,258.4 L275,257 L277.2,256.1 L276.4,256.1 L277.3,256.1 L277.4,256 L277.4,255.9 L277.5,255.8 L277.8,256 L278.2,256.8 L280.3,255.3 L280.4,255.3 L280.5,255.2 L280.4,254.9 L280.4,254.8 L282,250.3 L281.6,248.8 L282.7,245.5 L283.5,244.9 L283.1,240.2 L283.9,239.8 L284.5,237.5 L285.7,236.4 L286.3,235 L286.8,231.4 L287.6,229.2 L286.2,228.7 L285.4,226.5 L286.2,224.1 L285.9,221.1 L285.5,221 L285.5,218.2 L286,216.8 L285,214.9 L285.6,213 L284.8,212.5 L285.2,209.6 L286.4,206.5 L286.1,204.8 L286.8,202.5 L286.4,201.4 L286.4,201.4 L287.2,200.7 L288,198.1 L288.7,197.5 L288.9,195 L290.1,193.5 L291.1,191 L283.5,190.5 L277.8,190.2 L266.2,189.3 L261.7,189 L255.4,188.5 L249.8,188.1 L243.5,187.6 L237.3,187.2 L232.6,186.8 L221.9,185.9 L218.4,185.6 L217,185.4 Z","cx":223.9,"cy":236},"GO":{"nome":"Goiás","d":"M315.4,264.6 L315.9,262.6 L317.4,262.6 L317.7,262.6 L317.7,262.6 L317.9,262.6 L324.5,262.6 L326.6,263.6 L326.7,265.7 L325.9,267.4 L326.1,268.9 L326.8,269.3 L328.9,267.9 L331.2,267.8 L332.9,267.2 L332,263.9 L331.2,263.3 L331.4,261.8 L332.4,260.9 L332.1,259.8 L331.3,258.8 L331.5,256.9 L332.3,256.3 L335.2,257.3 L336.4,256.9 L336.7,256.9 L336,253.9 L336.7,252.5 L338.9,253.9 L338.9,255 L340.7,255.6 L342.3,254.6 L342.5,252.1 L342.6,252 L343,251.9 L342.8,249.2 L344,248.1 L342.1,246.5 L340.6,245.6 L340,244.2 L340.2,243.7 L339.6,242.9 L339.9,239.9 L340.8,238.6 L339.8,238.3 L340.3,236.8 L339.8,236.4 L342,234.7 L341.6,234.2 L339.2,234.9 L338.8,234.1 L339.2,231.7 L341.4,229.9 L338.4,230.8 L337.7,228.7 L337.4,230.1 L337.3,230.6 L335,230.6 L333.6,230.5 L332.4,231.8 L325.8,234.3 L323.6,232.4 L322.4,233.7 L322.9,235.6 L322.2,236.9 L320.8,235.1 L318.7,234.9 L317.4,234 L316.2,234.7 L316.6,232.9 L312.7,234.5 L312,232.7 L311.2,234.9 L311.3,232.5 L310.4,231.1 L307.7,228.5 L307.5,228.6 L306.4,230.4 L304.6,228.3 L303.2,229.5 L301.7,232.9 L301.6,234.4 L294.9,230.6 L291.5,229.6 L290,228.3 L290.8,225.9 L291.4,225.4 L291.2,224.4 L292.1,223.3 L290.1,224.5 L288.5,226.5 L287.6,229.2 L286.8,231.4 L286.3,235 L285.7,236.4 L284.5,237.5 L283.9,239.8 L283.1,240.2 L283.5,244.9 L282.7,245.5 L281.6,248.8 L282,250.3 L280.4,254.8 L280.4,254.9 L280.5,255.2 L280.4,255.3 L280.3,255.3 L278.2,256.8 L277.8,256 L277.4,255.9 L277.4,256 L277.3,256.1 L277.2,256.1 L275,257 L273.6,258.4 L273,262.3 L272,263.1 L272.2,264.5 L270.8,266.6 L269.7,266.8 L269.2,267.4 L266.2,267.5 L264.9,269.9 L263.5,270.5 L262.6,271.7 L261,272.7 L261.6,275.4 L260.3,276.3 L260.6,276.9 L259.1,278.6 L258.1,279.1 L257.9,279.4 L256.9,279.8 L256.3,282.5 L255.7,282.9 L254.4,285.2 L254.1,287.9 L254.1,289.1 L254.2,290.5 L255.1,291.2 L256.2,294.6 L255.3,295.2 L255.8,298.1 L259.3,298.1 L260,298.7 L259,299.5 L257.5,301.1 L258,301.9 L258.6,302.3 L260.2,302.9 L263.2,302.7 L264.3,303.5 L265.2,304.6 L267.1,304.8 L268.3,306.2 L270,306.4 L271.1,307.4 L273.1,308.3 L275,308.6 L276.1,308.8 L280.4,310.7 L282.4,312.7 L283.7,312.8 L283.1,312.1 L283.7,310.7 L284.7,309.5 L284.8,309.1 L285.9,308.5 L287.3,308 L288,305.8 L289.5,303.7 L290.5,302.8 L292.8,302.6 L293.5,301.7 L296.3,302.3 L296.8,301.8 L297.2,301.8 L299.4,301 L300.1,300.9 L301.5,302.2 L302.5,301.3 L303,300.7 L303.5,299.4 L305.4,299.2 L306.6,298.2 L307.1,298 L308.7,298.6 L310.3,298.5 L314.1,298.8 L315,298.3 L315.5,298.5 L318,299.6 L318.9,300.5 L320,299.8 L320,299.7 L321.1,299.4 L322.2,298.6 L323.1,298.1 L323.1,297.2 L325.3,296.2 L325.6,295.9 L327.1,294.7 L326,292 L327.3,289.2 L326.7,288.4 L324.9,288.2 L324,287.3 L324.1,286.7 L324.3,285.6 L324.6,285.9 L326.3,283.6 L328.3,282.3 L329,281.2 L328,279.9 L327.8,278 L327,276.8 L325.5,276.1 L325,274.7 L326.6,271.5 L326.8,269.5 L322.2,269.5 L319.1,269.5 L318.1,269.5 L318.1,269.5 L318.1,269.5 L317.3,269.5 L314.9,269.5 L314.9,266.7 L315.8,265.3 L315.4,264.6 Z","cx":304,"cy":267.7},"DF":{"nome":"Distrito Federal","d":"M318.1,269.5 L319.1,269.5 L322.2,269.5 L326.8,269.5 L326.8,269.3 L326.1,268.9 L325.9,267.4 L326.7,265.7 L326.6,263.6 L324.5,262.6 L317.9,262.6 L317.7,262.6 L317.7,262.6 L317.4,262.6 L315.9,262.6 L315.4,264.6 L315.8,265.3 L314.9,266.7 L314.9,269.5 L317.3,269.5 L318.1,269.5 L318.1,269.5 Z","cx":320.2,"cy":266.5}}};
+
+/* ---------------------------------------------------------------- svg chart primitives */
+const SVGNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, children){
+  const e = document.createElementNS(SVGNS, tag);
+  if(attrs) for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(children) children.forEach(c=>c && e.appendChild(c));
+  return e;
+}
+function niceMax(v){
+  if(v<=0) return 10;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  const norm = v/mag;
+  let step = norm<=1?1:norm<=2?2:norm<=5?5:10;
+  return step*mag;
+}
+
+function lineAreaChart(mount, opts){
+  const {data, meta, formatY, formatX, width=640, height=210, color='var(--s1)'} = opts;
+  const pad = {top:14, right:10, bottom:24, left:44};
+  const w = width, h = height;
+  const plotW = w-pad.left-pad.right, plotH = h-pad.top-pad.bottom;
+  const maxVal = niceMax(Math.max(meta||0, ...data.map(d=>d.y))*1.08);
+  const x = i => pad.left + (data.length<=1?0:(i/(data.length-1))*plotW);
+  const y = v => pad.top + plotH - (v/maxVal)*plotH;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'chart-wrap';
+  const svg = el('svg',{class:'chart', viewBox:`0 0 ${w} ${h}`, role:'img'});
+
+  const ticks = 4;
+  for(let t=0;t<=ticks;t++){
+    const val = maxVal*t/ticks;
+    const yy = y(val);
+    svg.appendChild(el('line',{x1:pad.left, x2:w-pad.right, y1:yy, y2:yy, stroke:'var(--grid)', 'stroke-width':1}));
+    const lbl = el('text',{x:pad.left-8, y:yy+3, 'text-anchor':'end', 'font-size':10, fill:'var(--ink-muted)'});
+    lbl.textContent = compactBRL(val).replace('R$ ','');
+    svg.appendChild(lbl);
+  }
+
+  const step = Math.ceil(data.length/7);
+  data.forEach((d,i)=>{
+    if(i%step!==0 && i!==data.length-1) return;
+    const lbl = el('text',{x:x(i), y:h-6, 'text-anchor':'middle', 'font-size':10, fill:'var(--ink-muted)'});
+    lbl.textContent = formatX(d.x,i);
+    svg.appendChild(lbl);
+  });
+
+  if(meta){
+    const my = y(meta);
+    svg.appendChild(el('line',{x1:pad.left, x2:w-pad.right, y1:my, y2:my, stroke:'var(--ink-muted)', 'stroke-width':1, 'stroke-dasharray':'3 4'}));
+    const lbl = el('text',{x:w-pad.right, y:my-5, 'text-anchor':'end', 'font-size':9.5, fill:'var(--ink-muted)'});
+    lbl.textContent = 'meta '+compactBRL(meta).replace('R$ ','');
+    svg.appendChild(lbl);
+  }
+
+  let dPath = '', aPath = '';
+  data.forEach((d,i)=>{
+    const cmd = i===0?'M':'L';
+    dPath += `${cmd}${x(i).toFixed(1)},${y(d.y).toFixed(1)} `;
+  });
+  aPath = `M${x(0).toFixed(1)},${y(0).toFixed(1)} ` + dPath.slice(1) + `L${x(data.length-1).toFixed(1)},${y(0).toFixed(1)} Z`;
+
+  const gradId = 'grad-'+Math.random().toString(36).slice(2,9);
+  const defs = el('defs',{},[
+    (()=>{ const g = el('linearGradient',{id:gradId, x1:0,y1:0,x2:0,y2:1});
+      g.appendChild(el('stop',{offset:'0%','stop-color':color,'stop-opacity':0.28}));
+      g.appendChild(el('stop',{offset:'100%','stop-color':color,'stop-opacity':0.02}));
+      return g; })()
+  ]);
+  svg.appendChild(defs);
+  svg.appendChild(el('path',{d:aPath, fill:`url(#${gradId})`, stroke:'none'}));
+  svg.appendChild(el('path',{d:dPath.trim(), fill:'none', stroke:color, 'stroke-width':2, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+
+  const lastI = data.length-1;
+  svg.appendChild(el('circle',{cx:x(lastI), cy:y(data[lastI].y), r:4, fill:color, stroke:'var(--surface-1)', 'stroke-width':2}));
+
+  const crossLine = el('line',{x1:0,x2:0,y1:pad.top,y2:pad.top+plotH, stroke:'var(--ink-muted)', 'stroke-width':1, opacity:0});
+  const crossDot = el('circle',{r:4.5, fill:color, stroke:'var(--surface-1)', 'stroke-width':2, opacity:0});
+  svg.appendChild(crossLine); svg.appendChild(crossDot);
+  const hitRect = el('rect',{x:pad.left, y:0, width:plotW, height:h, fill:'transparent'});
+  svg.appendChild(hitRect);
+
+  wrap.appendChild(svg);
+  const tip = document.createElement('div');
+  tip.className='chart-tooltip'; tip.style.display='none';
+  wrap.appendChild(tip);
+
+  hitRect.addEventListener('mousemove', (e)=>{
+    const rect = svg.getBoundingClientRect();
+    const scale = w/rect.width;
+    const mx = (e.clientX-rect.left)*scale;
+    let idx = Math.round(((mx-pad.left)/plotW)*(data.length-1));
+    idx = clamp(idx,0,data.length-1);
+    const d = data[idx];
+    crossLine.setAttribute('x1',x(idx)); crossLine.setAttribute('x2',x(idx)); crossLine.setAttribute('opacity',0.5);
+    crossDot.setAttribute('cx',x(idx)); crossDot.setAttribute('cy',y(d.y)); crossDot.setAttribute('opacity',1);
+    const px = (x(idx)/w)*rect.width;
+    const py = (y(d.y)/h)*rect.height;
+    tip.style.display='block';
+    tip.style.left = px+'px'; tip.style.top = py+'px';
+    tip.innerHTML = `<b>${formatX(d.x,idx,true)}</b><br>${formatY(d.y)}`;
+  });
+  hitRect.addEventListener('mouseleave', ()=>{
+    crossLine.setAttribute('opacity',0); crossDot.setAttribute('opacity',0); tip.style.display='none';
+  });
+
+  mount.appendChild(wrap);
+}
+
+function hBarChart(mount, opts){
+  const {items, formatValue, width=560, colorFn} = opts;
+  const rowH = 30, labelW = 148;
+  const maxVal = niceMax(Math.max(...items.map(i=>i.value))*1.1);
+  const plotW = width-labelW-56;
+  const h = rowH*items.length+6;
+  const wrap = document.createElement('div'); wrap.className='chart-wrap';
+  const svg = el('svg',{class:'chart', viewBox:`0 0 ${width} ${h}`});
+
+  items.forEach((it,i)=>{
+    const cy = i*rowH+rowH/2;
+    const barW = Math.max(3,(it.value/maxVal)*plotW);
+    const color = colorFn ? colorFn(it,i) : 'var(--s1)';
+
+    const lbl = el('text',{x:labelW-10, y:cy+4, 'text-anchor':'end', 'font-size':11.5, fill:'var(--ink-secondary)'});
+    lbl.textContent = it.label.length>20 ? it.label.slice(0,19)+'…' : it.label;
+    svg.appendChild(lbl);
+
+    svg.appendChild(el('rect',{x:labelW, y:cy-6, width:plotW, height:12, rx:6, fill:'var(--grid)'}));
+    const bar = el('rect',{x:labelW, y:cy-6, width:barW, height:12, rx:6, fill:color, class:'hbar'});
+    svg.appendChild(bar);
+
+    const valTxt = formatValue(it.value);
+    const inside = barW>70;
+    const vt = el('text',{
+      x: labelW + (inside? barW-8 : barW+8),
+      y: cy+4, 'text-anchor': inside?'end':'start',
+      'font-size':11, fill: inside? '#ffffff' : 'var(--ink-primary)', 'font-weight':600
+    });
+    vt.textContent = valTxt;
+    svg.appendChild(vt);
+
+    const hit = el('rect',{x:0,y:i*rowH,width:width,height:rowH,fill:'transparent'});
+    svg.appendChild(hit);
+    hit.addEventListener('mouseenter', ()=> bar.setAttribute('opacity',0.78));
+    hit.addEventListener('mouseleave', ()=> bar.setAttribute('opacity',1));
+  });
+
+  wrap.appendChild(svg);
+  mount.appendChild(wrap);
+}
+
+function vBarChart(mount, opts){
+  const {items, formatValue, width=640, height=190, colorFn} = opts;
+  const pad = {top:10, right:10, bottom:26, left:40};
+  const plotW = width-pad.left-pad.right, plotH = height-pad.top-pad.bottom;
+  const maxVal = niceMax(Math.max(...items.map(i=>i.value))*1.15);
+  const n = items.length;
+  const slot = plotW/n;
+  const barW = Math.min(22, slot*0.55);
+
+  const wrap = document.createElement('div'); wrap.className='chart-wrap';
+  const svg = el('svg',{class:'chart', viewBox:`0 0 ${width} ${height}`});
+
+  for(let t=0;t<=3;t++){
+    const val = maxVal*t/3;
+    const yy = pad.top+plotH-(val/maxVal)*plotH;
+    svg.appendChild(el('line',{x1:pad.left,x2:width-pad.right,y1:yy,y2:yy,stroke:'var(--grid)','stroke-width':1}));
+    const lbl = el('text',{x:pad.left-6,y:yy+3,'text-anchor':'end','font-size':9.5,fill:'var(--ink-muted)'});
+    lbl.textContent = fmtNum(val);
+    svg.appendChild(lbl);
+  }
+
+  const tip = document.createElement('div'); tip.className='chart-tooltip'; tip.style.display='none';
+
+  items.forEach((it,i)=>{
+    const cx = pad.left + slot*i + slot/2;
+    const barH = (it.value/maxVal)*plotH;
+    const yy = pad.top+plotH-barH;
+    const color = colorFn ? colorFn(it,i) : 'var(--s1)';
+    const bar = el('rect',{x:cx-barW/2, y:yy, width:barW, height:Math.max(1,barH), rx:4, fill:color});
+    svg.appendChild(bar);
+
+    const showLbl = n<=10 || i%Math.ceil(n/10)===0 || i===n-1;
+    if(showLbl){
+      const lbl = el('text',{x:cx,y:height-8,'text-anchor':'middle','font-size':9.5,fill:'var(--ink-muted)'});
+      lbl.textContent = it.label;
+      svg.appendChild(lbl);
+    }
+
+    const hit = el('rect',{x:pad.left+slot*i,y:0,width:slot,height:height,fill:'transparent'});
+    svg.appendChild(hit);
+    hit.addEventListener('mousemove',(e)=>{
+      bar.setAttribute('opacity',0.8);
+      const rect = svg.getBoundingClientRect();
+      const px = (cx/width)*rect.width, py=(yy/height)*rect.height;
+      tip.style.display='block'; tip.style.left=px+'px'; tip.style.top=py+'px';
+      tip.innerHTML = `<b>${it.label}</b><br>${formatValue(it.value)}`;
+    });
+    hit.addEventListener('mouseleave',()=>{ bar.setAttribute('opacity',1); tip.style.display='none'; });
+  });
+
+  wrap.appendChild(svg); wrap.appendChild(tip);
+  mount.appendChild(wrap);
+}
+
+function groupedBarChart(mount, opts){
+  const {items, series, formatValue, width=640, height=200} = opts;
+  const pad = {top:10, right:10, bottom:26, left:40};
+  const plotW = width-pad.left-pad.right, plotH = height-pad.top-pad.bottom;
+  const maxVal = niceMax(Math.max(...items.flatMap(it=>series.map(s=>it[s.key])))*1.15);
+  const n = items.length;
+  const slot = plotW/n;
+  const groupW = Math.min(26, slot*0.72);
+  const barW = groupW/series.length;
+
+  const wrap = document.createElement('div'); wrap.className='chart-wrap';
+  const svg = el('svg',{class:'chart', viewBox:`0 0 ${width} ${height}`});
+
+  for(let t=0;t<=3;t++){
+    const val = maxVal*t/3;
+    const yy = pad.top+plotH-(val/maxVal)*plotH;
+    svg.appendChild(el('line',{x1:pad.left,x2:width-pad.right,y1:yy,y2:yy,stroke:'var(--grid)','stroke-width':1}));
+    const lbl = el('text',{x:pad.left-6,y:yy+3,'text-anchor':'end','font-size':9.5,fill:'var(--ink-muted)'});
+    lbl.textContent = fmtNum(val);
+    svg.appendChild(lbl);
+  }
+
+  const tip = document.createElement('div'); tip.className='chart-tooltip'; tip.style.display='none';
+
+  items.forEach((it,i)=>{
+    const gx = pad.left + slot*i + slot/2 - groupW/2;
+    series.forEach((s,si)=>{
+      const val = it[s.key];
+      const barH = (val/maxVal)*plotH;
+      const x = gx + si*barW;
+      const yy = pad.top+plotH-barH;
+      svg.appendChild(el('rect',{x, y:yy, width:Math.max(1,barW-2), height:Math.max(1,barH), rx:3, fill:s.color}));
+    });
+
+    const showLbl = n<=10 || i%Math.ceil(n/10)===0 || i===n-1;
+    if(showLbl){
+      const lbl = el('text',{x:pad.left+slot*i+slot/2,y:height-8,'text-anchor':'middle','font-size':9.5,fill:'var(--ink-muted)'});
+      lbl.textContent = it.label;
+      svg.appendChild(lbl);
+    }
+
+    const hit = el('rect',{x:pad.left+slot*i,y:0,width:slot,height:height,fill:'transparent'});
+    svg.appendChild(hit);
+    hit.addEventListener('mousemove',()=>{
+      const rect = svg.getBoundingClientRect();
+      const px = ((pad.left+slot*i+slot/2)/width)*rect.width, py = ((pad.top+plotH*0.15)/height)*rect.height;
+      tip.style.display='block'; tip.style.left=px+'px'; tip.style.top=py+'px';
+      tip.innerHTML = `<b>${it.label}</b><br>`+series.map(s=>`${s.label}: ${formatValue(it[s.key])}`).join('<br>');
+    });
+    hit.addEventListener('mouseleave',()=>{ tip.style.display='none'; });
+  });
+
+  wrap.appendChild(svg); wrap.appendChild(tip);
+  mount.appendChild(wrap);
+
+  const legend = document.createElement('div'); legend.className='legend-row'; legend.style.cssText='padding:10px 0 0;';
+  series.forEach(s=>{
+    const chip = document.createElement('div'); chip.className='legend-chip';
+    chip.innerHTML = `<span class="legend-swatch" style="background:${s.color}"></span>${s.label}`;
+    legend.appendChild(chip);
+  });
+  mount.appendChild(legend);
+}
+
+function pieChart(mount, segments){
+  const total = segments.reduce((s,x)=>s+x.value,0) || 1;
+  const size = 210, cx=size/2, cy=size/2, r=size/2-6;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex; align-items:center; gap:26px; flex-wrap:wrap;';
+  const svgWrap = document.createElement('div'); svgWrap.style.cssText='position:relative; flex:0 0 auto;';
+  const svg = el('svg',{class:'chart', viewBox:`0 0 ${size} ${size}`, style:`width:${size}px; max-width:100%;`});
+  const tip = document.createElement('div'); tip.className='chart-tooltip'; tip.style.display='none';
+
+  let angle = -Math.PI/2;
+  segments.forEach(seg=>{
+    if(seg.value<=0) return;
+    const frac = seg.value/total;
+    const nextAngle = angle + frac*Math.PI*2;
+    const x1 = cx + r*Math.cos(angle), y1 = cy + r*Math.sin(angle);
+    const x2 = cx + r*Math.cos(nextAngle), y2 = cy + r*Math.sin(nextAngle);
+    const largeArc = frac>0.5 ? 1 : 0;
+    const d = `M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${largeArc} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`;
+    const path = el('path',{d, fill:seg.color, stroke:'var(--surface-1)', 'stroke-width':2});
+    svg.appendChild(path);
+    path.addEventListener('mousemove',()=>{
+      path.setAttribute('opacity',0.82);
+      const rect = svg.getBoundingClientRect();
+      tip.style.display='block'; tip.style.left=(rect.width/2)+'px'; tip.style.top=(rect.height/2)+'px';
+      tip.innerHTML = `<b>${seg.label}</b><br>${fmtNum(seg.value)} (${pct(frac,1)})`;
+    });
+    path.addEventListener('mouseleave',()=>{ path.setAttribute('opacity',1); tip.style.display='none'; });
+    angle = nextAngle;
+  });
+  svgWrap.appendChild(svg); svgWrap.appendChild(tip);
+  wrap.appendChild(svgWrap);
+
+  const legend = document.createElement('div'); legend.style.cssText='display:flex; flex-direction:column; gap:9px;';
+  segments.forEach(seg=>{
+    const row = document.createElement('div'); row.style.cssText='display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-secondary);';
+    row.innerHTML = `<span style="width:10px;height:10px;border-radius:3px;background:${seg.color};flex:0 0 auto;"></span>${seg.label} · <b class="num" style="color:var(--ink-primary)">${fmtNum(seg.value)}</b> (${pct(seg.value/total,1)})`;
+    legend.appendChild(row);
+  });
+  wrap.appendChild(legend);
+  mount.appendChild(wrap);
+}
+
+function stackedBar100(mount, segments){
+  const total = segments.reduce((s,x)=>s+x.value,0)||1;
+  const wrap = document.createElement('div');
+  const barRow = document.createElement('div');
+  barRow.style.cssText = 'display:flex; height:22px; border-radius:8px; overflow:hidden; gap:2px;';
+  segments.forEach(seg=>{
+    const pctW = (seg.value/total)*100;
+    if(pctW<=0) return;
+    const d = document.createElement('div');
+    d.style.cssText = `width:${pctW}%; background:${seg.color}; min-width:${pctW>0?2:0}px;`;
+    d.title = seg.label+': '+fmtNum(seg.value)+' ('+pct(seg.value/total,1)+')';
+    barRow.appendChild(d);
+  });
+  wrap.appendChild(barRow);
+
+  const legend = document.createElement('div');
+  legend.className = 'legend-row';
+  legend.style.paddingLeft = '0'; legend.style.paddingRight='0'; legend.style.paddingTop='14px';
+  segments.forEach(seg=>{
+    const chip = document.createElement('div'); chip.className='legend-chip';
+    chip.innerHTML = `<span class="legend-swatch" style="background:${seg.color}"></span>${seg.label} · <b class="num" style="color:var(--ink-primary)">${fmtNum(seg.value)}</b> (${pct(seg.value/total,1)})`;
+    legend.appendChild(chip);
+  });
+  wrap.appendChild(legend);
+  mount.appendChild(wrap);
+}
+
+function sparkline(mount, values, color){
+  const w=100,h=28;
+  const max = Math.max(...values,1), min = Math.min(...values,0);
+  const range = (max-min)||1;
+  const x = i=> (i/(values.length-1))*w;
+  const y = v=> h-((v-min)/range)*h;
+  let d=''; values.forEach((v,i)=> d += (i===0?'M':'L')+x(i).toFixed(1)+','+y(v).toFixed(1)+' ');
+  const svg = el('svg',{class:'spark', viewBox:`0 0 ${w} ${h}`, width:'100', height:'28'});
+  svg.appendChild(el('path',{d:d.trim(), fill:'none', stroke:color, 'stroke-width':1.8, 'stroke-linecap':'round','stroke-linejoin':'round'}));
+  svg.appendChild(el('circle',{cx:x(values.length-1), cy:y(values[values.length-1]), r:2.4, fill:color}));
+  mount.appendChild(svg);
+}
+
+const SEQ_RAMP = ['#cde2fb','#b7d3f6','#9ec5f4','#86b6ef','#6da7ec','#5598e7','#3987e5','#2a78d6','#256abf','#1c5cab','#184f95','#104281','#0d366b'];
+function seqColor(t){
+  const idx = clamp(Math.round(t*(SEQ_RAMP.length-1)),0,SEQ_RAMP.length-1);
+  return SEQ_RAMP[idx];
+}
+function textColorFor(hex){
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  const lum = (0.299*r+0.587*g+0.114*b)/255;
+  return lum>0.58 ? '#111111' : '#ffffff';
+}
+
+function brazilHeatmap(mount, opts){
+  const {valueByUF, formatValue} = opts;
+  const entries = Object.entries(BR_MAP.states);
+  const vals = entries.map(([uf])=> valueByUF[uf]||0).filter(v=>v>0);
+  const maxVal = vals.length? Math.max(...vals) : 1;
+  const vw = BR_MAP.viewBox[2], vh = BR_MAP.viewBox[3];
+
+  const wrap = document.createElement('div'); wrap.className='chart-wrap';
+  const svg = el('svg',{class:'chart', viewBox:`0 0 ${vw} ${vh}`, style:'max-height:420px; margin:0 auto; display:block;'});
+  const tip = document.createElement('div'); tip.className='chart-tooltip'; tip.style.display='none';
+
+  entries.forEach(([uf, st])=>{
+    const val = valueByUF[uf]||0;
+    const t = val>0 ? val/maxVal : 0;
+    const fill = val>0 ? seqColor(t) : 'var(--surface-2)';
+    const path = el('path',{d:st.d, fill, stroke:'var(--surface-1)', 'stroke-width':1.1, 'stroke-linejoin':'round'});
+    svg.appendChild(path);
+    path.addEventListener('mousemove',(e)=>{
+      path.setAttribute('stroke','var(--ink-primary)'); path.setAttribute('stroke-width',1.8);
+      const rect = svg.getBoundingClientRect();
+      const px = (st.cx/vw)*rect.width, py=(st.cy/vh)*rect.height;
+      tip.style.display='block'; tip.style.left=px+'px'; tip.style.top=py+'px';
+      tip.innerHTML = `<b>${st.nome} (${uf})</b><br>${val>0? formatValue(val) : 'sem registros no período'}`;
+    });
+    path.addEventListener('mouseleave',()=>{
+      path.setAttribute('stroke','var(--surface-1)'); path.setAttribute('stroke-width',1.1);
+      tip.style.display='none';
+    });
+  });
+
+  const LABELED = ['AM','PA','MT','BA','MG','SP','RS','GO','MS','PR','TO','MA','PI'];
+  entries.forEach(([uf,st])=>{
+    if(!LABELED.includes(uf)) return;
+    const val = valueByUF[uf]||0;
+    const fill = val>0? seqColor(val/maxVal) : 'var(--surface-2)';
+    const t = el('text',{x:st.cx, y:st.cy+3.5, 'text-anchor':'middle', 'font-size':10.5, 'font-weight':700, fill:textColorFor(fill), 'pointer-events':'none'});
+    t.textContent = uf;
+    svg.appendChild(t);
+  });
+
+  wrap.appendChild(svg); wrap.appendChild(tip);
+  mount.appendChild(wrap);
+
+  const legend = document.createElement('div');
+  legend.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px; font-size:11px; color:var(--ink-muted);';
+  const gradId = 'seqgrad-'+Math.random().toString(36).slice(2,8);
+  const legendSvg = el('svg',{width:130,height:12,viewBox:'0 0 130 12'});
+  const lgDefs = el('defs',{},[(()=>{
+    const g = el('linearGradient',{id:gradId, x1:0,y1:0,x2:1,y2:0});
+    SEQ_RAMP.forEach((c,i)=> g.appendChild(el('stop',{offset:(i/(SEQ_RAMP.length-1)*100)+'%','stop-color':c})));
+    return g;
+  })()]);
+  legendSvg.appendChild(lgDefs);
+  legendSvg.appendChild(el('rect',{x:0,y:0,width:130,height:12,rx:4,fill:`url(#${gradId})`}));
+  const lo = document.createElement('span'); lo.textContent='menor';
+  const hi = document.createElement('span'); hi.textContent='maior';
+  const noData = document.createElement('span');
+  noData.style.cssText='display:inline-flex;align-items:center;gap:5px;margin-left:16px;';
+  noData.innerHTML = `<span style="width:10px;height:10px;border-radius:3px;background:var(--surface-2);border:1px solid var(--border);display:inline-block;"></span>sem dados`;
+  legend.appendChild(lo); legend.appendChild(legendSvg); legend.appendChild(hi); legend.appendChild(noData);
+  mount.appendChild(legend);
+}
+
+/* ---------------------------------------------------------------- card / stat shells */
+function statTile({label, value, deltaText, tone, sub, sparkValues, sparkColor}){
+  const t = document.createElement('div'); t.className='stat-tile';
+  t.innerHTML = `
+    <div class="stat-label">${label}</div>
+    <div class="stat-value-row">
+      <div class="stat-value num">${value}</div>
+      ${deltaText? `<span class="delta ${tone||'neutral'}">${deltaText}</span>`:''}
+    </div>
+    ${sub? `<div class="stat-sub">${sub}</div>` : ''}
+  `;
+  if(sparkValues){
+    const holder = document.createElement('div');
+    t.appendChild(holder);
+    sparkline(holder, sparkValues, sparkColor||'var(--accent)');
+  }
+  return t;
+}
+
+function chartCard({title, subtitle, renderChart, tableColumns, tableRows}){
+  const card = document.createElement('div'); card.className='card';
+  const head = document.createElement('div'); head.className='card-head';
+  head.innerHTML = `<div><div class="card-title">${title}</div>${subtitle?`<div class="card-subtitle">${subtitle}</div>`:''}</div>`;
+  let showingTable = false;
+  if(tableColumns){
+    const btn = document.createElement('button');
+    btn.className='card-toggle'; btn.textContent='Ver tabela';
+    head.appendChild(btn);
+    const body = document.createElement('div'); body.className='card-body';
+    const chartHolder = document.createElement('div');
+    renderChart(chartHolder);
+    body.appendChild(chartHolder);
+
+    const tableHolder = document.createElement('div');
+    tableHolder.style.display='none';
+    tableHolder.appendChild(buildTable(tableColumns, tableRows));
+    body.appendChild(tableHolder);
+
+    btn.addEventListener('click', ()=>{
+      showingTable = !showingTable;
+      chartHolder.style.display = showingTable? 'none':'block';
+      tableHolder.style.display = showingTable? 'block':'none';
+      btn.textContent = showingTable? 'Ver gráfico':'Ver tabela';
+    });
+    card.appendChild(head); card.appendChild(body);
+  } else {
+    const body = document.createElement('div'); body.className='card-body';
+    renderChart(body);
+    card.appendChild(head); card.appendChild(body);
+  }
+  return card;
+}
+
+function buildTable(columns, rows){
+  const table = document.createElement('table'); table.className='data-table';
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr>'+columns.map(c=>`<th>${c.label}</th>`).join('')+'</tr>';
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = columns.map(c=>`<td class="${c.strong?'strong':''} ${c.mono?'mono':''}">${c.render? c.render(r) : r[c.key]}</td>`).join('');
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+function tableCard({title, subtitle, columns, rows, note}){
+  const card = document.createElement('div'); card.className='card';
+  const head = document.createElement('div'); head.className='card-head';
+  head.innerHTML = `<div><div class="card-title">${title}</div>${subtitle?`<div class="card-subtitle">${subtitle}</div>`:''}</div>`;
+  card.appendChild(head);
+  const body = document.createElement('div'); body.className='card-body';
+  body.appendChild(buildTable(columns, rows));
+  card.appendChild(body);
+  if(note){ const n = document.createElement('div'); n.className='table-note'; n.textContent=note; n.style.padding='10px 18px 16px'; card.appendChild(n); }
+  return card;
+}
+
+/* ---------------------------------------------------------------- state + filtering */
+let currentPeriod = 30;
+let currentPane = 'faturamento';
+// Filtro de data fixo: do último dia do mês passado (fechamento) até hoje.
+function ultimoDiaMesAnterior(d){ return new Date(d.getFullYear(), d.getMonth(), 0); }
+function mesmoDiaMesAnterior(d){
+  const t = new Date(d.getFullYear(), d.getMonth()-1, 1);
+  t.setDate(Math.min(d.getDate(), daysInMonth(t)));
+  return t;
+}
+function inicioJanela(){ return ultimoDiaMesAnterior(HOJE); }
+function diasJanela(){ return dayOffset(inicioJanela())+1; }
+function rotuloJanela(){ return fmtDateShort(inicioJanela())+' → '+fmtDateShort(HOJE); }
+
+function monthSelector(root){
+  const ini = inicioJanela();
+  const chip = document.createElement('div');
+  chip.className = 'live-chip';
+  chip.innerHTML = `<span class="live-dot" style="background:var(--good)"></span><span>Período fixo: último fechamento (${fmtDateShort(ini)}) até hoje (${fmtDateShort(HOJE)})</span>`;
+  root.appendChild(chip);
+  return {refMonthStart: ini, refEnd: HOJE, totalDiasMes: daysInMonth(HOJE), diasDecorridos: diasJanela()};
+}
+
+
+function avisoIndisponivel(mount, texto){
+  const d = document.createElement('div');
+  d.style.cssText = 'padding:26px 4px; color:var(--ink-muted); font-size:12.5px; line-height:1.6;';
+  d.textContent = texto;
+  mount.appendChild(d);
+}
+const MSG_PRODUTO = 'Indisponível nas views atuais: VW_PEDIDOS não expõe o código do produto do item (COD_PRD_ITE_PED_029) e VW_PRODUTOS não expõe COD_PRD_009. Com essas duas colunas o gráfico é ligado.';
+const MSG_MOTIVO = 'Indisponível nas views atuais: nenhuma das 3 views traz o motivo da pendência da cotação.';
+
+/* ---------------------------------------------------------------- pane: faturamento */
+function renderFaturamento(root){
+  const {refMonthStart, refEnd, totalDiasMes, diasDecorridos} = monthSelector(root);
+
+  const prevMonthStart = ultimoDiaMesAnterior(refMonthStart);
+  const prevEnd = mesmoDiaMesAnterior(HOJE);
+
+  const ped = PEDIDOS.filter(p=>p.situacao==='FATURADO' && p.dataFat>=refMonthStart && p.dataFat<=refEnd);
+  const pedAnt = PEDIDOS.filter(p=>p.situacao==='FATURADO' && p.dataFat>=prevMonthStart && p.dataFat<=prevEnd);
+  const totalAtual = ped.reduce((s,p)=>s+p.valorTotal,0);
+  const totalAnterior = pedAnt.reduce((s,p)=>s+p.valorTotal,0);
+  const temComparativo = totalAnterior>0;
+  const variacao = temComparativo ? (totalAtual-totalAnterior)/totalAnterior : 0;
+
+  const metaMensal = META_MENSAL_EMPRESA;
+  const temMeta = metaMensal!=null;
+  const metaProrata = temMeta ? metaMensal * (diasDecorridos/totalDiasMes) : 0;
+  const atingMeta = temMeta ? totalAtual / metaProrata : 0;
+
+  const kpis = document.createElement('div'); kpis.className='kpi-row';
+
+  const hojePed = PEDIDOS.filter(p=>p.offsetFat===0 && p.situacao==='FATURADO');
+  const faturamentoHoje = hojePed.reduce((s,p)=>s+p.valorTotal,0);
+  const last14 = [];
+  for(let o=13;o>=0;o--){ last14.push(PEDIDOS.filter(p=>p.offsetFat===o && p.situacao==='FATURADO').reduce((s,p)=>s+p.valorTotal,0)); }
+  kpis.appendChild(statTile({label:'Faturamento hoje', value:fmtBRL(faturamentoHoje), sub: hojePed.length+' pedidos faturados', sparkValues:last14, sparkColor:'var(--s1)'}));
+
+  kpis.appendChild(statTile({label:'Faturamento no período', value:fmtBRL(totalAtual),
+    deltaText: temComparativo? (variacao>=0?'↑ ':'↓ ')+pct(Math.abs(variacao),1) : 'sem comparativo',
+    tone: temComparativo? (variacao>=0?'good':'critical') : 'neutral',
+    sub: temComparativo? 'vs. mesmo período do mês anterior: '+fmtBRL(totalAnterior) : 'mês anterior sem dados na amostra'}));
+
+  if(temMeta){
+    kpis.appendChild(statTile({label:'Faturamento vs Meta', value:fmtBRL(totalAtual),
+      deltaText: pct(atingMeta,1), tone: atingMeta>=1?'good':(atingMeta>=0.85?'neutral':'critical'),
+      sub: 'Meta do mês: '+fmtBRL(metaMensal)+' · pro-rata: '+fmtBRL(metaProrata)}));
+  } else {
+    kpis.appendChild(statTile({label:'Faturamento vs Meta', value:fmtBRL(totalAtual),
+      sub:'Meta não configurada · defina META_MENSAL_EMPRESA no .env'}));
+  }
+
+  kpis.appendChild(statTile({label:'Pedidos faturados', value:fmtNum(ped.length), sub: rotuloJanela()+' · '+fmtNum(diasDecorridos)+' dias'}));
+
+  root.appendChild(kpis);
+
+  const grid = document.createElement('div'); grid.className='grid-2';
+
+  const serieDiaria = [];
+  for(let o=diasDecorridos-1; o>=0; o--){
+    const day = addDays(HOJE,-o);
+    const val = ped.filter(p=>p.offsetFat===o).reduce((s,p)=>s+p.valorTotal,0);
+    serieDiaria.push({x:day, y:val});
+  }
+  const metaDiaria = temMeta ? metaMensal/totalDiasMes : null;
+  grid.appendChild(chartCard({
+    title:'Faturamento diário', subtitle:`${rotuloJanela()}${temMeta ? ' · linha tracejada = meta/dia' : ' · por data da NF'}`,
+    renderChart:(mount)=> lineAreaChart(mount,{
+      data:serieDiaria, meta:metaDiaria,
+      formatY:v=>fmtBRL(v), formatX:(d,i,full)=> full? fmtDateFull(d) : fmtDateShort(d),
+      color:'var(--s1)'
+    }),
+    tableColumns:[{key:'data',label:'Data'},{key:'valor',label:'Faturamento', strong:true}],
+    tableRows: serieDiaria.map(d=>({data:fmtDateFull(d.x), valor:fmtBRL(d.y)}))
+  }));
+
+  const porRegiao = {};
+  ped.forEach(p=>{ porRegiao[p.cliente.regiao]=(porRegiao[p.cliente.regiao]||0)+p.valorTotal; });
+  const regItems = Object.entries(porRegiao).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
+  grid.appendChild(chartCard({
+    title:'Faturamento por região', subtitle:'Distribuição geográfica do período',
+    renderChart:(mount)=> hBarChart(mount,{items:regItems, formatValue:fmtBRL, width:480,
+      colorFn:(it,i)=>['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)'][i%5]})
+  }));
+  root.appendChild(grid);
+
+  const grid2 = document.createElement('div'); grid2.className='grid-2';
+
+  const porDivisao = {};
+  ped.forEach(p=>{ porDivisao[p.divisao]=(porDivisao[p.divisao]||0)+p.valorTotal; });
+  const divItems = Object.entries(porDivisao).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
+  grid2.appendChild(chartCard({
+    title:'Faturamento por divisão de produto', subtitle:'Origem VW_PRODUTOS · agregado por pedido',
+    renderChart:(mount)=>{
+      if(!LIMITES.produtos){ avisoIndisponivel(mount, MSG_PRODUTO); return; }
+      hBarChart(mount,{items:divItems, formatValue:fmtBRL, width:480,
+        colorFn:(it,i)=>['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)','var(--s6)','var(--s7)','var(--s8)'][i%8]});
+    }
+  }));
+
+  const porProduto = {};
+  ped.forEach(p=>{ porProduto[p.produto]=(porProduto[p.produto]||0)+p.valorTotal; });
+  const prodItems = Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([label,value])=>({label,value}));
+  grid2.appendChild(chartCard({
+    title:'Faturamento por produto', subtitle:'Top 10 produtos do período · origem VW_PRODUTOS',
+    renderChart:(mount)=>{
+      if(!LIMITES.produtos){ avisoIndisponivel(mount, MSG_PRODUTO); return; }
+      if(!prodItems.length){
+        const p = document.createElement('div'); p.style.cssText='padding:30px 0;text-align:center;color:var(--ink-muted);font-size:12.5px;';
+        p.textContent = 'Nenhum faturamento no período.'; mount.appendChild(p); return;
+      }
+      hBarChart(mount,{items:prodItems, formatValue:fmtBRL, width:480, colorFn:()=>'var(--s1)'});
+    }
+  }));
+  root.appendChild(grid2);
+
+  const porCliente = {};
+  ped.forEach(p=>{ const k=p.cliente.razaoSocial; porCliente[k]=(porCliente[k]||0)+p.valorTotal; });
+  const topClientes = Object.entries(porCliente).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([label,value])=>({label,value}));
+  root.appendChild(chartCard({
+    title:'Top clientes', subtitle:'Maiores faturamentos do período',
+    renderChart:(mount)=> hBarChart(mount,{items:topClientes, formatValue:fmtBRL, width:480, colorFn:()=> 'var(--s1)'})
+  }));
+}
+
+/* ---------------------------------------------------------------- pane: pedidos */
+function renderPedidos(root){
+  const {refMonthStart, refEnd, diasDecorridos} = monthSelector(root);
+
+  const ped = PEDIDOS.filter(p=>p.dataEmissao>=refMonthStart && p.dataEmissao<=refEnd);
+  const totalCotacoes = ped.length; // todo pedido nasce como cotação
+  const faturados = ped.filter(p=>p.situacao==='FATURADO').length;
+  const confirmados = ped.filter(p=>p.situacao==='LIBERADO'||p.situacao==='FATURADO').length;
+
+  const kpis = document.createElement('div'); kpis.className='kpi-row';
+
+  const hojeFaturados = PEDIDOS.filter(p=>p.offsetFat===0 && p.situacao==='FATURADO');
+  const valorHoje = hojeFaturados.reduce((s,p)=>s+p.valorTotal,0);
+  kpis.appendChild(statTile({label:'Pedidos do dia', value:fmtNum(hojeFaturados.length), sub:'faturados hoje · '+fmtBRL(valorHoje)}));
+
+  kpis.appendChild(statTile({label:'Pedidos no período', value:fmtNum(totalCotacoes), sub: rotuloJanela()+' · '+diasDecorridos+' dias'}));
+  kpis.appendChild(statTile({label:'Faturados', value:fmtNum(faturados), sub:pct(faturados/(totalCotacoes||1),1)+' do total'}));
+  kpis.appendChild(statTile({label:'Cotações vs Emitidos', value:fmtNum(totalCotacoes),
+    deltaText: pct(confirmados/(totalCotacoes||1),0)+' confirmados', tone: confirmados/(totalCotacoes||1)>=0.7?'good':'neutral',
+    sub: 'Todo pedido nasce como cotação · '+fmtNum(confirmados)+' confirmados de '+fmtNum(totalCotacoes)}));
+  root.appendChild(kpis);
+
+  const dailyItems = [];
+  for(let o=diasDecorridos-1; o>=0; o--){
+    const day = addDays(HOJE,-o);
+    const doDia = ped.filter(p=>p.offset===o);
+    const confirmadosDia = doDia.filter(p=>p.situacao==='LIBERADO'||p.situacao==='FATURADO').length;
+    dailyItems.push({label:fmtDateShort(day), cotacoes:doDia.length, pedidos:confirmadosDia});
+  }
+  root.appendChild(chartCard({
+    title:'Pedidos emitidos por dia', subtitle:`Cotações x pedidos confirmados · ${rotuloJanela()}`,
+    renderChart:(mount)=> groupedBarChart(mount,{items:dailyItems, width:1040, height:220, formatValue:v=>fmtNum(v)+' pedidos', series:[
+      {key:'cotacoes', label:'Cotações', color:'var(--s1)'},
+      {key:'pedidos', label:'Pedidos confirmados', color:'var(--good)'},
+    ]})
+  }));
+
+  const statusColor = {FATURADO:'var(--good)', LIBERADO:'var(--accent)', EMITIDO:'var(--warning)', CANCELADO:'var(--critical)'};
+  const statusOrder = ['FATURADO','LIBERADO','EMITIDO','CANCELADO'];
+  const statusCounts = statusOrder.map(s=>({label:s, value:ped.filter(p=>p.situacao===s).length, color:statusColor[s]}));
+  root.appendChild(chartCard({
+    title:'Pedidos por situação', subtitle:`Composição do funil comercial · ${rotuloJanela()}`,
+    renderChart:(mount)=> pieChart(mount, statusCounts)
+  }));
+
+  const recentes = ped.slice().sort((a,b)=>a.offset-b.offset).slice(0,14);
+  root.appendChild(tableCard({
+    title:'Pedidos recentes', subtitle:'Últimos lançamentos do período',
+    columns:[
+      {key:'numero', label:'Pedido', mono:true, strong:true},
+      {key:'data', label:'Emissão'},
+      {key:'cliente', label:'Cliente'},
+      {key:'vendedor', label:'Vendedor'},
+      {key:'valor', label:'Valor', strong:true},
+      {key:'situacao', label:'Situação', render:r=>`<span class="pill ${r._tone}">${r.situacao}</span>`},
+    ],
+    rows: recentes.map(p=>({
+      numero:p.numero, data:fmtDateShort(p.dataEmissao), cliente:p.cliente.razaoSocial, vendedor:p.vendedor.nome,
+      valor:fmtBRL(p.valorTotal), situacao:p.situacao,
+      _tone: p.situacao==='FATURADO'?'good':p.situacao==='CANCELADO'?'critical':p.situacao==='LIBERADO'?'neutral':'warning'
+    }))
+  }));
+}
+
+/* ---------------------------------------------------------------- pane: vendedor */
+function renderVendedor(root){
+  const {refMonthStart, refEnd} = monthSelector(root);
+
+  const ehInterno = p=> VENDEDORES_INTERNOS.some(v=>v.id===p.vendedor.id);
+  const ped = PEDIDOS.filter(p=>p.situacao!=='CANCELADO' && p.dataEmissao>=refMonthStart && p.dataEmissao<=refEnd && ehInterno(p));
+  const fatur = PEDIDOS.filter(p=>p.situacao==='FATURADO' && p.dataFat>=refMonthStart && p.dataFat<=refEnd && ehInterno(p));
+
+  const porVend = VENDEDORES_INTERNOS.map(v=>{
+    const seus = fatur.filter(p=>p.vendedor.id===v.id);
+    const faturamento = seus.reduce((s,p)=>s+p.valorTotal,0);
+    const numPedidos = ped.filter(p=>p.vendedor.id===v.id).length;
+    return {v, faturamento, numPedidos, ticket: seus.length? faturamento/seus.length:0};
+  }).sort((a,b)=>b.faturamento-a.faturamento);
+
+  const destaque = porVend[0];
+  const ativos = porVend.filter(x=>x.numPedidos>0).length;
+  const mediaFat = porVend.reduce((s,x)=>s+x.faturamento,0)/porVend.length;
+  const totalFaturado = porVend.reduce((s,x)=>s+x.faturamento,0);
+  const ticketEquipe = fatur.length? totalFaturado/fatur.length : 0;
+
+  const kpis = document.createElement('div'); kpis.className='kpi-row';
+  kpis.appendChild(statTile({label:'Vendedor destaque', value:destaque.v.nome, sub:fmtBRL(destaque.faturamento)+' faturados'}));
+  kpis.appendChild(statTile({label:'Vendedores ativos', value:ativos+' / '+VENDEDORES_INTERNOS.length, sub:'internos com pedidos no período'}));
+  kpis.appendChild(statTile({label:'Média por vendedor', value:fmtBRL(mediaFat), sub:'faturamento médio no período'}));
+  kpis.appendChild(statTile({label:'Ticket médio da equipe', value:fmtBRL2(ticketEquipe), sub: fatur.length+' pedidos faturados no período'}));
+  root.appendChild(kpis);
+
+  const grid = document.createElement('div'); grid.className='grid-2';
+  const rankItems = porVend.map(x=>({label:x.v.nome, value:x.faturamento}));
+  grid.appendChild(chartCard({
+    title:'Ranking de faturamento', subtitle:`Vendedores internos · ${rotuloJanela()}`,
+    renderChart:(mount)=> hBarChart(mount,{items:rankItems, formatValue:fmtBRL, width:480,
+      colorFn:(it,i)=> i===0?'var(--s1)':'var(--baseline)'})
+  }));
+
+  const pedidosItems = porVend.slice().sort((a,b)=>b.numPedidos-a.numPedidos).map(x=>({label:x.v.nome, value:x.numPedidos}));
+  grid.appendChild(chartCard({
+    title:'Ranking de pedidos', subtitle:`Volume de pedidos por vendedor · ${rotuloJanela()}`,
+    renderChart:(mount)=> hBarChart(mount,{items:pedidosItems, formatValue:v=>fmtNum(v)+' pedidos', width:480,
+      colorFn:(it,i)=> i===0?'var(--s1)':'var(--baseline)'})
+  }));
+  root.appendChild(grid);
+
+  const mapCard = document.createElement('div'); mapCard.className='card';
+  const mapHead = document.createElement('div'); mapHead.className='card-head';
+  mapHead.innerHTML = `<div><div class="card-title">Mapa de vendas por estado</div><div class="card-subtitle">Faturamento por UF do cliente · vendedores internos · ${rotuloJanela()}</div></div>`;
+  const vendSelect = document.createElement('select');
+  vendSelect.className = 'card-toggle';
+  vendSelect.innerHTML = '<option value="">Todos os vendedores</option>' + VENDEDORES_INTERNOS.map(v=>`<option value="${v.id}">${v.nome}</option>`).join('');
+  mapHead.appendChild(vendSelect);
+  mapCard.appendChild(mapHead);
+  const mapBody = document.createElement('div'); mapBody.className='card-body';
+  mapCard.appendChild(mapBody);
+  root.appendChild(mapCard);
+
+  function drawVendMap(){
+    mapBody.innerHTML = '';
+    const filtro = vendSelect.value;
+    const fonte = filtro ? fatur.filter(p=>p.vendedor.id===filtro) : fatur;
+    const valueByUF = {};
+    fonte.forEach(p=>{ valueByUF[p.cliente.estado] = (valueByUF[p.cliente.estado]||0) + p.valorTotal; });
+    if(!Object.values(valueByUF).some(v=>v>0)){
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:30px 0; text-align:center; color:var(--ink-muted); font-size:12.5px;';
+      empty.textContent = 'Sem faturamento deste vendedor no período.';
+      mapBody.appendChild(empty);
+      return;
+    }
+    brazilHeatmap(mapBody, {valueByUF, formatValue:fmtBRL});
+  }
+  vendSelect.addEventListener('change', drawVendMap);
+  drawVendMap();
+
+  root.appendChild(tableCard({
+    title:'Desempenho por vendedor', subtitle:`Somente vendedores internos · ${rotuloJanela()}`,
+    columns:[
+      {key:'nome', label:'Vendedor', strong:true},
+      {key:'tipo', label:'Tipo'},
+      {key:'pedidos', label:'Pedidos'},
+      {key:'faturamento', label:'Faturamento', strong:true},
+      {key:'ticket', label:'Ticket médio'},
+    ],
+    rows: porVend.map(x=>({
+      nome:x.v.nome, tipo:x.v.tipo, pedidos:fmtNum(x.numPedidos), faturamento:fmtBRL(x.faturamento),
+      ticket:fmtBRL2(x.ticket)
+    }))
+  }));
+}
+
+/* ---------------------------------------------------------------- pane: cotações */
+function renderCotacoes(root){
+  const dias = currentPeriod;
+  const emitidas = PEDIDOS.filter(p=>p.offset<dias); // todo pedido nasce como cotação
+  const pendentes = emitidas.filter(p=>p.temCotacao);
+  const valorPendente = pendentes.reduce((s,p)=>s+p.valorTotal,0);
+  const diasAberto = pendentes.map(p=>p.offset);
+  const mediaDias = diasAberto.length? diasAberto.reduce((a,b)=>a+b,0)/diasAberto.length : 0;
+
+  const kpis = document.createElement('div'); kpis.className='kpi-row';
+  kpis.appendChild(statTile({label:'Cotações emitidas', value:fmtNum(emitidas.length), sub:'total no período · todo pedido nasce como cotação'}));
+  kpis.appendChild(statTile({label:'Cotações pendentes', value:fmtNum(pendentes.length),
+    sub:pct(pendentes.length/(emitidas.length||1),0)+' ainda aguardando decisão'}));
+  kpis.appendChild(statTile({label:'Valor em cotação pendentes', value:fmtBRL(valorPendente), sub:'potencial de faturamento'}));
+  kpis.appendChild(statTile({label:'Tempo médio aberto', value:mediaDias.toFixed(1).replace('.',',')+' dias', sub:'desde a emissão'}));
+  root.appendChild(kpis);
+
+  const buckets = [
+    {label:'0–3 dias', min:0,max:3, color:'var(--good)'},
+    {label:'4–7 dias', min:4,max:7, color:'var(--warning)'},
+    {label:'8–15 dias', min:8,max:15, color:'var(--serious)'},
+    {label:'> 15 dias', min:16,max:9999, color:'var(--critical)'},
+  ];
+  const bucketItems = buckets.map(b=>({label:b.label, value:pendentes.filter(p=>p.offset>=b.min && p.offset<=b.max).length, color:b.color}));
+
+  const grid = document.createElement('div'); grid.className='grid-2';
+  grid.appendChild(chartCard({
+    title:'Cotações por tempo em aberto', subtitle:'Quanto mais antiga, maior o risco de perda',
+    renderChart:(mount)=> vBarChart(mount,{items:bucketItems, formatValue:v=>fmtNum(v)+' cotações', width:480,
+      colorFn:(it)=>it.color})
+  }));
+
+  const porMotivo = {};
+  pendentes.forEach(p=>{ porMotivo[p.motivoPendencia]=(porMotivo[p.motivoPendencia]||0)+1; });
+  const motivoItems = Object.entries(porMotivo).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
+  grid.appendChild(chartCard({
+    title:'Motivos da pendência', subtitle:'Por que a cotação ainda não virou pedido',
+    renderChart:(mount)=>{
+      if(!LIMITES.motivoPendencia){ avisoIndisponivel(mount, MSG_MOTIVO); return; }
+      if(!motivoItems.length){
+        const p = document.createElement('div'); p.style.cssText='padding:30px 0;text-align:center;color:var(--ink-muted);font-size:12.5px;';
+        p.textContent = 'Nenhuma cotação pendente no período selecionado.'; mount.appendChild(p); return;
+      }
+      hBarChart(mount,{items:motivoItems, formatValue:v=>fmtNum(v)+' cotações', width:480,
+        colorFn:(it,i)=>['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)','var(--s6)'][i%6]});
+    }
+  }));
+  root.appendChild(grid);
+
+  const grid2 = document.createElement('div'); grid2.className='grid-2';
+  const porVendCot = {};
+  pendentes.forEach(p=>{ porVendCot[p.vendedor.nome]=(porVendCot[p.vendedor.nome]||0)+p.valorTotal; });
+  const vendCotItems = Object.entries(porVendCot).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
+  grid2.appendChild(chartCard({
+    title:'Valor em cotação pendentes por vendedor', subtitle:'Carteira de propostas aguardando decisão',
+    renderChart:(mount)=>{
+      if(!vendCotItems.length){
+        const p = document.createElement('div'); p.style.cssText='padding:30px 0;text-align:center;color:var(--ink-muted);font-size:12.5px;';
+        p.textContent = 'Nenhuma cotação pendente no período selecionado.'; mount.appendChild(p); return;
+      }
+      hBarChart(mount,{items:vendCotItems, formatValue:fmtBRL, width:480, colorFn:()=>'var(--s1)'});
+    }
+  }));
+
+  const porClienteCot = {};
+  pendentes.forEach(p=>{ const k=p.cliente.razaoSocial; porClienteCot[k]=(porClienteCot[k]||0)+p.valorTotal; });
+  const clienteCotItems = Object.entries(porClienteCot).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([label,value])=>({label,value}));
+  grid2.appendChild(chartCard({
+    title:'Valor em cotação pendentes por cliente', subtitle:'Top 10 clientes com maior valor aguardando decisão',
+    renderChart:(mount)=>{
+      if(!clienteCotItems.length){
+        const p = document.createElement('div'); p.style.cssText='padding:30px 0;text-align:center;color:var(--ink-muted);font-size:12.5px;';
+        p.textContent = 'Nenhuma cotação pendente no período selecionado.'; mount.appendChild(p); return;
+      }
+      hBarChart(mount,{items:clienteCotItems, formatValue:fmtBRL, width:480, colorFn:()=>'var(--s3)'});
+    }
+  }));
+  root.appendChild(grid2);
+
+  const lista = pendentes.slice().sort((a,b)=>b.offset-a.offset).slice(0,20);
+  root.appendChild(tableCard({
+    title:'Cotações pendentes', subtitle:'Ordenadas por tempo aguardando resposta',
+    columns:[
+      {key:'numero', label:'Cotação', mono:true, strong:true},
+      {key:'data', label:'Emissão'},
+      {key:'cliente', label:'Cliente'},
+      {key:'vendedor', label:'Vendedor'},
+      {key:'motivo', label:'Motivo da pendência'},
+      {key:'valor', label:'Valor', strong:true},
+      {key:'dias', label:'Dias em aberto', render:r=>`<span class="pill ${r._tone}">${r.dias} d</span>`},
+    ].filter(c=> c.key!=='motivo' || LIMITES.motivoPendencia),
+    rows: lista.map(p=>({
+      numero:p.numero, data:fmtDateShort(p.dataEmissao), cliente:p.cliente.razaoSocial, vendedor:p.vendedor.nome,
+      motivo:p.motivoPendencia, valor:fmtBRL(p.valorTotal), dias:p.offset,
+      _tone: p.offset>15?'critical':p.offset>7?'serious':p.offset>3?'warning':'good'
+    })),
+    note: pendentes.length>20? `mostrando 20 de ${pendentes.length} cotações pendentes` : pendentes.length===0 ? 'Nenhuma cotação pendente no período selecionado.' : null
+  }));
+}
+
+/* ---------------------------------------------------------------- pane: entregas */
+function renderEntregas(root){
+  const dias = currentPeriod;
+  const pendentes = PEDIDOS.filter(p=>p.emAndamento && p.offset<dias);
+  const atrasadas = pendentes.filter(p=>p.atrasada);
+  const emTransito = pendentes.filter(p=>p.situacaoAcomp==='EM TRANSITO').length;
+  const comTempo = PEDIDOS.filter(p=>p.offset<dias && p.tempoEntrega!=null && p.situacao!=='CANCELADO');
+  const prazoMedio = comTempo.length? comTempo.reduce((s,p)=>s+p.tempoEntrega,0)/comTempo.length : 0;
+
+  const kpis = document.createElement('div'); kpis.className='kpi-row';
+  kpis.appendChild(statTile({label:'Entregas pendentes', value:fmtNum(pendentes.length), sub:'pedidos liberados ou faturados em curso'}));
+  kpis.appendChild(statTile({label:'Em trânsito', value:fmtNum(emTransito), sub:'a caminho do destino'}));
+  kpis.appendChild(statTile({label:'Entregas atrasadas', value:fmtNum(atrasadas.length),
+    deltaText: atrasadas.length>0? pct(atrasadas.length/(pendentes.length||1),0)+' do total':'nenhuma',
+    tone: atrasadas.length>0?'critical':'good',
+    sub: DADOS_REAIS ? 'em andamento há mais de '+REGRAS.diasLimiteEntrega+' dias desde a emissão' : null}));
+  kpis.appendChild(statTile({label:'Média do tempo de entrega', value:prazoMedio.toFixed(1).replace('.',',')+' dias',
+    sub: DADOS_REAIS ? 'da emissão até a saída (a data de entrega não existe nas views)' : 'da emissão até a entrega'}));
+  root.appendChild(kpis);
+
+  const estagios = ['PENDENTE','DISPONIVEL','EM SEPARACAO','SEPARADO','EM TRANSITO'];
+  const estColors = {PENDENTE:'var(--seq-250)', DISPONIVEL:'var(--seq-350)','EM SEPARACAO':'var(--seq-450)', SEPARADO:'var(--seq-550)', 'EM TRANSITO':'var(--seq-600)'};
+  const estLabels = {PENDENTE:'Pendente', DISPONIVEL:'Disponível','EM SEPARACAO':'Em separação', SEPARADO:'Separado', 'EM TRANSITO':'Em trânsito'};
+  const estItems = estagios.map(e=>({label:estLabels[e], value:pendentes.filter(p=>p.situacaoAcomp===e).length, color:estColors[e]}));
+
+  const grid = document.createElement('div'); grid.className='grid-2';
+  grid.appendChild(chartCard({
+    title:'Entregas por estágio logístico', subtitle:'Funil de acompanhamento (exclui finalizados)',
+    renderChart:(mount)=> hBarChart(mount,{items:estItems, formatValue:v=>fmtNum(v)+' pedidos', width:480, colorFn:(it)=>it.color})
+  }));
+
+  const porTransp = {};
+  atrasadas.forEach(p=>{ porTransp[p.transportadora]=(porTransp[p.transportadora]||0)+1; });
+  const transpItems = Object.entries(porTransp).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
+  grid.appendChild(chartCard({
+    title:'Atrasos por transportadora', subtitle: transpItems.length? 'Concentração de entregas em atraso' : 'Nenhum atraso registrado por transportadora',
+    renderChart:(mount)=>{
+      if(!transpItems.length){
+        const p = document.createElement('div'); p.style.cssText='padding:30px 0;text-align:center;color:var(--ink-muted);font-size:12.5px;';
+        p.textContent = 'Sem atrasos no momento.'; mount.appendChild(p); return;
+      }
+      hBarChart(mount,{items:transpItems, formatValue:v=>fmtNum(v)+' pedidos', width:480, colorFn:()=>'var(--critical)'});
+    }
+  }));
+  root.appendChild(grid);
+
+  const lista = pendentes.slice().sort((a,b)=> (b.atrasada?1:0)-(a.atrasada?1:0) || a.diasParaLimite-b.diasParaLimite).slice(0,20);
+  root.appendChild(tableCard({
+    title:'Entregas em andamento', subtitle: DADOS_REAIS ? 'Mais antigas primeiro · limite = emissão + '+REGRAS.diasLimiteEntrega+' dias (as views não trazem prazo)' : 'Ordenadas por urgência de prazo',
+    columns:[
+      {key:'numero', label:'Pedido', mono:true, strong:true},
+      {key:'cliente', label:'Cliente'},
+      {key:'responsavel', label:'Responsável'},
+      {key:'transportadora', label:'Transportadora'},
+      {key:'motorista', label:'Motorista em rota'},
+      {key:'estagio', label:'Estágio'},
+      {key:'prazo', label:DADOS_REAIS ? 'Limite' : 'Prazo'},
+      {key:'status', label:'Status', render:r=>`<span class="pill ${r._tone}">${r.status}</span>`},
+    ],
+    rows: lista.map(p=>({
+      numero:p.numero, cliente:p.cliente.razaoSocial, responsavel:p.responsavel, transportadora:p.transportadora, motorista:p.motorista||'—',
+      estagio:estLabels[p.situacaoAcomp]||p.situacaoAcomp, prazo:fmtDateShort(p.dataLimite),
+      status: p.atrasada? `${Math.abs(p.diasParaLimite)}d de atraso` : `${p.diasParaLimite}d restantes`,
+      _tone: p.atrasada? 'critical' : p.diasParaLimite<=2?'warning':'good'
+    })),
+    note: pendentes.length>20? `mostrando 20 de ${pendentes.length} entregas em andamento` : pendentes.length===0 ? 'Nenhuma entrega em andamento no período selecionado.' : null
+  }));
+}
+
+/* ---------------------------------------------------------------- pane: clientes */
+function statsClientes(){
+  const map = {};
+  CLIENTES.forEach(c=> map[c.id] = c.statsPre || {ultimoOffset:null, faturamentoTotal:0, numPedidos:0});
+  if(DADOS_REAIS) return map;
+  PEDIDOS.forEach(p=>{
+    const s = map[p.cliente.id];
+    if(!s) return;
+    if(p.situacao!=='CANCELADO' && (s.ultimoOffset===null || p.offset<s.ultimoOffset)) s.ultimoOffset = p.offset;
+    if(p.situacao==='FATURADO'){ s.faturamentoTotal += p.valorTotal; s.numPedidos++; }
+  });
+  return map;
+}
+
+function renderClientes(root){
+  const dias = currentPeriod;
+  const stats = statsClientes();
+  const inativos = CLIENTES.filter(c=>c.situacao==='Inativo');
+  const total = CLIENTES.length;
+
+  const inativadosPeriodo = inativos.filter(c=>dayOffset(c.dataAlteracao)<dias).length;
+  const fatInativos = inativos.map(c=>({c, fat: stats[c.id].faturamentoTotal, dias: stats[c.id].ultimoOffset}));
+  const faturamentoPerdido = fatInativos.reduce((s,x)=>s+x.fat,0);
+  const temposComoCliente = inativos.map(c=> Math.round((c.dataAlteracao-c.dataCadastro)/86400000));
+  const tempoMedioComoCliente = temposComoCliente.length? temposComoCliente.reduce((a,b)=>a+b,0)/temposComoCliente.length : 0;
+
+  const kpis = document.createElement('div'); kpis.className='kpi-row';
+  kpis.appendChild(statTile({label:'Clientes inativos', value:fmtNum(inativos.length),
+    deltaText:pct(inativos.length/total,0)+' da base', tone: inativos.length/total>0.2?'critical':'neutral',
+    sub: DADOS_REAIS ? 'compraram nos últimos '+REGRAS.janelaInativosMeses+' meses e estão '+REGRAS.diasParaInativar+'+ dias sem pedido' : null}));
+  kpis.appendChild(statTile({label:'Faturamento histórico perdido', value:fmtBRL(faturamentoPerdido), sub:'soma do que já compraram antes de inativar'}));
+  kpis.appendChild(statTile({label:'Inativados no período', value:fmtNum(inativadosPeriodo),
+    deltaText: inativadosPeriodo>0?'atenção':'nenhum', tone: inativadosPeriodo>0?'critical':'good', sub: 'últimos '+dias+' dias'}));
+  kpis.appendChild(statTile({label:'Tempo médio até inativar', value:tempoMedioComoCliente.toFixed(0)+' dias', sub:'do cadastro até a inativação'}));
+  root.appendChild(kpis);
+
+  const grid = document.createElement('div'); grid.className='grid-2';
+  const valueByUF = {};
+  inativos.forEach(c=>{ valueByUF[c.estado] = (valueByUF[c.estado]||0)+1; });
+  grid.appendChild(chartCard({
+    title:'Clientes inativos por estado', subtitle:'Onde está concentrada a base perdida',
+    renderChart:(mount)=> brazilHeatmap(mount, {valueByUF, formatValue:v=>fmtNum(v)+' cliente'+(v===1?'':'s')})
+  }));
+
+  const porSegmento = {};
+  inativos.forEach(c=>{ porSegmento[c.segmento]=(porSegmento[c.segmento]||0)+1; });
+  const segItems = Object.entries(porSegmento).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([label,value])=>({label,value}));
+  grid.appendChild(chartCard({
+    title:'Clientes inativos por segmento', subtitle:'Área de atuação predominante entre os inativos',
+    renderChart:(mount)=>{
+      if(!segItems.length){
+        const p = document.createElement('div'); p.style.cssText='padding:30px 0;text-align:center;color:var(--ink-muted);font-size:12.5px;';
+        p.textContent = 'Nenhum cliente inativo no momento.'; mount.appendChild(p); return;
+      }
+      hBarChart(mount,{items:segItems, formatValue:v=>fmtNum(v)+' clientes', width:480,
+        colorFn:(it,i)=>['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)'][i%5]});
+    }
+  }));
+  root.appendChild(grid);
+
+  const grid2 = document.createElement('div'); grid2.className='grid-2';
+  const porVendedorCli = {};
+  inativos.forEach(c=>{ porVendedorCli[c.vendedor.nome]=(porVendedorCli[c.vendedor.nome]||0)+1; });
+  const vendCliItems = Object.entries(porVendedorCli).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([label,value])=>({label,value}));
+  grid2.appendChild(chartCard({
+    title:'Inativos por vendedor responsável', subtitle:'Quem atendia esses clientes antes da inativação',
+    renderChart:(mount)=>{
+      if(!vendCliItems.length){
+        const p = document.createElement('div'); p.style.cssText='padding:30px 0;text-align:center;color:var(--ink-muted);font-size:12.5px;';
+        p.textContent = 'Nenhum cliente inativo no momento.'; mount.appendChild(p); return;
+      }
+      hBarChart(mount,{items:vendCliItems, formatValue:v=>fmtNum(v)+' clientes', width:480, colorFn:()=>'var(--critical)'});
+    }
+  }));
+
+  const porTipoVenda = {};
+  inativos.forEach(c=>{ porTipoVenda[c.tipoVenda]=(porTipoVenda[c.tipoVenda]||0)+1; });
+  const tipoItems = Object.entries(porTipoVenda).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
+  grid2.appendChild(chartCard({
+    title:'Clientes inativos por tipo de venda', subtitle:'Perfil comercial da base perdida',
+    renderChart:(mount)=>{
+      if(!tipoItems.length){
+        const p = document.createElement('div'); p.style.cssText='padding:30px 0;text-align:center;color:var(--ink-muted);font-size:12.5px;';
+        p.textContent = 'Nenhum cliente inativo no momento.'; mount.appendChild(p); return;
+      }
+      hBarChart(mount,{items:tipoItems, formatValue:v=>fmtNum(v)+' clientes', width:480,
+        colorFn:(it,i)=>['var(--s6)','var(--s7)','var(--s8)','var(--s2)','var(--s4)'][i%5]});
+    }
+  }));
+  root.appendChild(grid2);
+
+  const reativRows = fatInativos.slice().sort((a,b)=>b.fat-a.fat);
+  root.appendChild(tableCard({
+    title:'Priorizar reativação', subtitle:'Clientes inativos ordenados pelo faturamento histórico — por onde começar a reconquista',
+    columns:[
+      {key:'cliente', label:'Cliente', strong:true},
+      {key:'vendedor', label:'Vendedor'},
+      {key:'segmento', label:'Segmento'},
+      {key:'regiao', label:'Região'},
+      {key:'ultimaCompra', label:'Última compra'},
+      {key:'fat', label:'Faturamento histórico', strong:true},
+    ],
+    rows: reativRows.slice(0,30).map(x=>({
+      cliente:x.c.razaoSocial, vendedor:x.c.vendedor.nome, segmento:x.c.segmento, regiao:x.c.regiao,
+      ultimaCompra: x.dias===null? 'sem histórico' : fmtDateShort(addDays(HOJE,-x.dias)),
+      fat: fmtBRL(x.fat)
+    })),
+    note: reativRows.length>30 ? 'mostrando os 30 maiores faturamentos históricos de '+fmtNum(reativRows.length)+' clientes inativos' : reativRows.length===0 ? 'Nenhum cliente inativo no momento.' : null
+  }));
+
+  root.appendChild(tableCard({
+    title:'Cadastro de inativos', subtitle:'Inativações mais recentes (VW_CLIENTES) — datas de ciclo de vida',
+    columns:[
+      {key:'cliente', label:'Cliente', strong:true},
+      {key:'segmento', label:'Segmento'},
+      {key:'regiao', label:'UF'},
+      {key:'vendedor', label:'Vendedor'},
+      {key:'cadastro', label:'Cadastro'},
+      {key:'inativacao', label:'Inativado em'},
+    ],
+    rows: inativos.slice().sort((a,b)=>b.dataAlteracao-a.dataAlteracao).slice(0,50).map(c=>({
+      cliente:c.razaoSocial, segmento:c.segmento, regiao:c.estado, vendedor:c.vendedor.nome,
+      cadastro: fmtDateShort(c.dataCadastro), inativacao: fmtDateShort(c.dataAlteracao)
+    })),
+    note: inativos.length>50 ? 'mostrando as 50 inativações mais recentes de '+fmtNum(inativos.length) : null
+  }));
+}
+
+/* ---------------------------------------------------------------- nav / lifecycle */
+const PANES = {
+  faturamento:{ title:'Faturamento', desc:'Receita faturada do último fechamento até hoje, evolução diária e composição por região, produto e divisão', render:renderFaturamento },
+  pedidos:{ title:'Pedidos', desc:'Cotações, conversão e funil comercial do último fechamento até hoje', render:renderPedidos },
+  vendedor:{ title:'Vendedor', desc:'Ranking de faturamento e pedidos da equipe interna de vendas, do último fechamento até hoje', render:renderVendedor },
+  cotacoes:{ title:'Cotações', desc:'Propostas aguardando aprovação do cliente, emitidas do último fechamento até hoje', render:renderCotacoes },
+  entregas:{ title:'Entregas', desc:'Pedidos em trânsito logístico e riscos de atraso, emitidos do último fechamento até hoje', render:renderEntregas },
+  clientes:{ title:'Clientes Inativos', desc:'Base perdida: quem inativou, quanto faturava e por onde priorizar a reconquista', render:renderClientes },
+};
+
+const content = document.getElementById('content');
+const paneEls = {};
+Object.keys(PANES).forEach(key=>{
+  const div = document.createElement('div'); div.className='pane'; div.id='pane-'+key;
+  content.appendChild(div); paneEls[key]=div;
+});
+
+function renderPane(key){
+  const el = paneEls[key];
+  el.innerHTML='';
+  PANES[key].render(el);
+}
+function renderAllPanes(){ Object.keys(PANES).forEach(renderPane); }
+
+function selectPane(key){
+  currentPane = key;
+  document.querySelectorAll('.nav-item').forEach(b=> b.classList.toggle('active', b.dataset.pane===key));
+  Object.entries(paneEls).forEach(([k,el])=> el.classList.toggle('active', k===key));
+  document.getElementById('topbar-title').textContent = PANES[key].title;
+  document.getElementById('topbar-desc').textContent = PANES[key].desc;
+  document.getElementById('live-text').textContent = (DADOS_REAIS ? 'Dados do ERP' : 'Dados de exemplo')+' · período '+rotuloJanela();
+}
+
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.addEventListener('click', ()=> selectPane(btn.dataset.pane));
+});
+
+function updateBadges(){
+  document.getElementById('badge-cotacoes').textContent = PEDIDOS.filter(p=>p.temCotacao).length;
+  document.getElementById('badge-entregas').textContent = PEDIDOS.filter(p=>p.atrasada).length;
+  document.getElementById('badge-clientes').textContent = CLIENTES.filter(c=>c.situacao==='Inativo').length;
+}
+
+/* ---------------------------------------------------------------- dados reais (API /api/dashboard) */
+function aplicarDadosReais(d){
+  const toDate = s => { if(!s) return null; const [a,b,c] = s.split('-').map(Number); return new Date(a,b-1,c); };
+  DADOS_REAIS = true;
+  HOJE = toDate(d.hoje);
+  META_MENSAL_EMPRESA = d.metaMensal;
+  LIMITES = d.limites;
+  REGRAS = d.regras;
+
+  VENDEDORES = d.vendedores.map(v=>({id:v.id, nome:v.nome, tipo:v.tipo}));
+  VENDEDORES_INTERNOS = VENDEDORES.filter(v=>v.tipo==='Interno');
+  const vendPorNome = new Map(VENDEDORES.map(v=>[v.nome, v]));
+
+  CLIENTES = d.clientes.map(c=>{
+    const ultima = toDate(c.ultimaCompra), primeira = toDate(c.primeiraCompra);
+    return {
+      id:c.id, razaoSocial:c.razaoSocial, tipo:'PJ', situacao:'Ativo',
+      segmento:c.segmento, tipoVenda:c.tipoVenda, cidade:'', estado:c.estado, regiao:c.regiao,
+      vendedor:{id:c.vendedor, nome:c.vendedor, tipo:'Interno'},
+      dataCadastro: toDate(c.dataCadastro) || primeira,
+      dataAtivacao: toDate(c.dataAtivacao) || primeira,
+      dataAlteracao: ultima, cutoffOffset:0,
+      statsPre:{ultimoOffset:dayOffset(ultima), faturamentoTotal:c.faturamentoHistorico, numPedidos:c.numPedidos},
+    };
+  });
+  const clientePorNome = new Map(CLIENTES.map(c=>[c.razaoSocial, c]));
+  const semCadastro = new Map();
+  const clienteDe = nome=>{
+    if(clientePorNome.has(nome)) return clientePorNome.get(nome);
+    if(!semCadastro.has(nome)) semCadastro.set(nome, {id:nome, razaoSocial:nome||'Sem cliente', tipo:'PJ', situacao:'Ativo',
+      segmento:'Não informado', tipoVenda:'Não informado', cidade:'', estado:'', regiao:'Não informada',
+      vendedor:{id:'—', nome:'Sem vendedor', tipo:'Externo'}});
+    return semCadastro.get(nome);
+  };
+
+  PEDIDOS = d.pedidos.map(r=>{
+    const dataEmissao = toDate(r.dataEmissao);
+    const dataFat = toDate(r.dataNF) || dataEmissao;
+    const emAndamento = (r.situacao==='LIBERADO' || r.situacao==='FATURADO') && r.acomp!=='FINALIZADO';
+    const dataLimite = addDays(dataEmissao, REGRAS.diasLimiteEntrega);
+    const diasParaLimite = Math.round((dataLimite-HOJE)/86400000);
+    const saida = toDate(r.dataSaida);
+    return {
+      numero:r.numero, dataEmissao, offset:dayOffset(dataEmissao), dataFat, offsetFat:dayOffset(dataFat),
+      valorTotal:r.valor, cliente:clienteDe(r.cliente), vendedor:vendPorNome.get(r.vendedor),
+      transportadora:r.transportadora||'—', motorista:r.motorista||null, responsavel:r.responsavel||'—',
+      situacao:r.situacao, situacaoAcomp:r.acomp, temCotacao:r.situacao==='EMITIDO', motivoPendencia:null,
+      prazoEntrega:null, dataLimite, diasParaLimite, emAndamento, atrasada: emAndamento && diasParaLimite<0,
+      tempoEntrega: saida ? Math.max(0, Math.round((saida-dataEmissao)/86400000)) : null,
+      produto:null, divisao:null,
+    };
+  });
+  currentPeriod = diasJanela();
+  deriveStatusClientes();
+}
+
+async function carregarDadosReais(forcar){
+  try{
+    const resp = await fetch('/api/dashboard'+(forcar?'?refresh=1':''), {cache:'no-store'});
+    if(resp.status===404) return {ok:false};
+    const corpo = await resp.json().catch(()=>null);
+    if(!resp.ok) return {ok:false, erro:(corpo && corpo.erro) || ('HTTP '+resp.status)};
+    aplicarDadosReais(corpo);
+    return {ok:true};
+  }catch(e){ return {ok:false}; }
+}
+
+function mostrarBanner(texto){
+  const b = document.getElementById('banner');
+  b.textContent = texto; b.style.display = texto? 'block':'none';
+}
+
+const schemaBtn = document.getElementById('schema-toggle');
+const schemaPanel = document.getElementById('schema-panel');
+function descreverFonte(){
+  if(DADOS_REAIS){
+    schemaBtn.textContent = 'Dados reais do ERP (VW_PEDIDOS, VW_CLIENTES, VW_PRODUTOS). Clique para ver as regras e limitações.';
+    schemaPanel.innerHTML = `
+      <div><code>VW_PEDIDOS</code> → só pedidos (TIPO 1). Faturado = NF emitida + IDT_FATURAMENTO=1, contado pela data da NF. Valor do pedido deduplicado (a view tem 1 linha por item).</div>
+      <div style="margin-top:6px;"><code>VW_CLIENTES</code> → cadastro ligado ao pedido pelo nome do cliente; UF e região derivadas do estado. Inativo = ${REGRAS.diasParaInativar}+ dias sem pedido (só quem comprou nos últimos ${REGRAS.janelaInativosMeses} meses).</div>
+      <div style="margin-top:6px;">Atraso de entrega = em andamento há mais de ${REGRAS.diasLimiteEntrega} dias desde a emissão (as views não trazem prazo).</div>
+      <div style="margin-top:6px;">Indisponível nas views: faturamento por produto/divisão e motivo da pendência.</div>`;
+  } else {
+    schemaBtn.textContent = 'Dados mockados · modelados a partir de VW_CLIENTES, pedidos e VW_PRODUTOS. Clique para ver o mapeamento.';
+    schemaPanel.innerHTML = `
+      <div><code>VW_CLIENTES</code> → Cliente, região, vendedor, segmento e natureza de venda usados em todos os painéis.</div>
+      <div style="margin-top:6px;"><code>VW_PEDIDOS</code> (SITUACAO / SITUACAO_ACOMPANHAMENTO / COD_COT) → Faturamento, Pedidos, Vendedor, Cotações e Entregas.</div>
+      <div style="margin-top:6px;"><code>VW_PRODUTOS</code> (DIVISAO) → composição do Faturamento por divisão de produto.</div>
+      <div style="margin-top:6px;">Todos os valores são gerados por um algoritmo aleatório seedado — estrutura fiel às colunas reais, volumes fictícios.</div>`;
+  }
+}
+schemaBtn.addEventListener('click', ()=> schemaPanel.classList.toggle('open'));
+
+const refreshBtn = document.getElementById('refresh-btn');
+refreshBtn.addEventListener('click', async ()=>{
+  if(DADOS_REAIS){
+    refreshBtn.disabled = true; refreshBtn.textContent = '↻ Atualizando…';
+    const r = await carregarDadosReais(true);
+    refreshBtn.disabled = false; refreshBtn.textContent = '↻ Atualizar';
+    mostrarBanner(r.ok? '' : 'Não foi possível atualizar os dados do ERP'+(r.erro? ' ('+r.erro+')':'')+'. Mantendo a última carga.');
+    if(r.ok){ updateBadges(); renderAllPanes(); selectPane(currentPane); }
+    return;
+  }
+  rand = mulberry32(Date.now()>>>0);
+  PEDIDOS = gerarPedidos();
+  deriveStatusClientes();
+  updateBadges();
+  renderPane(currentPane);
+});
+
+(async function iniciar(){
+  const loading = document.getElementById('loading');
+  loading.style.display = 'block';
+  const r = await carregarDadosReais(false);
+  loading.style.display = 'none';
+  if(!r.ok && r.erro) mostrarBanner('Não foi possível carregar os dados do ERP ('+r.erro+'). Exibindo dados de exemplo.');
+  currentPeriod = diasJanela();
+  refreshBtn.textContent = DADOS_REAIS ? '↻ Atualizar' : '↻ Nova amostra';
+  descreverFonte();
+  updateBadges();
+  renderAllPanes();
+  selectPane('faturamento');
+})();
+
+})();
+</script>
+
+</body></html>
