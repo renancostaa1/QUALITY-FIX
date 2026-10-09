@@ -36,7 +36,9 @@ export async function buildDashboard() {
     query(
       `SELECT TIPO AS tipo, NUMERO_PEDIDO AS numero,
               MAX(DATA_EMISSAO) AS data_emissao, MAX(DATA_NF) AS data_nf, MAX(DATA_SAIDA) AS data_saida,
-              COALESCE(MAX(VALOR_TOTAL), SUM(VALOR_TOTAL_ITEM)) AS valor,
+              COALESCE(MAX(VALOR_TOTAL), SUM(VALOR_TOTAL_ITEM)) AS valor_sem_ipi,
+              SUM(COALESCE(VALOR_IPI, 0)) AS ipi,
+              SUM(COALESCE(VALOR_ICMS_SBS, 0)) AS icms_st,
               MAX(NOME_CLIENTE) AS cliente, MAX(NOME_VENDEDOR) AS vendedor,
               MAX(NOME_TRANSPORTADORA) AS transportadora, MAX(NOME_MOTORISTA) AS motorista,
               MAX(NOME_USUARIO_RESPONSAVEL) AS responsavel,
@@ -60,7 +62,7 @@ export async function buildDashboard() {
               SUM(CASE WHEN fat = 1 AND dnf IS NOT NULL THEN vt ELSE 0 END) AS faturamento
          FROM (SELECT NUMERO_PEDIDO, MAX(NOME_CLIENTE) AS cliente, MAX(DATA_EMISSAO) AS de, MAX(DATA_NF) AS dnf,
                       MAX(CAST(IDT_FATURAMENTO AS int)) AS fat,
-                      COALESCE(MAX(VALOR_TOTAL), SUM(VALOR_TOTAL_ITEM)) AS vt
+                      COALESCE(MAX(VALOR_TOTAL), SUM(VALOR_TOTAL_ITEM)) + SUM(COALESCE(VALOR_IPI, 0)) + SUM(COALESCE(VALOR_ICMS_SBS, 0)) AS vt
                  FROM ${V_PEDIDOS}
                 WHERE TIPO IN (${tipos}) AND SITUACAO <> 'CANCELADO'
                 GROUP BY TIPO, NUMERO_PEDIDO) x
@@ -112,7 +114,9 @@ export async function buildDashboard() {
       dataEmissao,
       dataNF,
       dataSaida: saida && utcDate(saida) <= hojeD ? saida : null,
-      valor: Number(r.valor) || 0,
+      valor: (Number(r.valor_sem_ipi) || 0) + (Number(r.ipi) || 0) + (Number(r.icms_st) || 0),
+      ipi: Number(r.ipi) || 0,
+      icmsSt: Number(r.icms_st) || 0,
       cliente: clean(r.cliente),
       vendedor,
       transportadora: clean(r.transportadora),

@@ -33,4 +33,10 @@ app.get('/api/dashboard', async (req, res) => {
 
 const port = Number(process.env.API_PORT) || 3001;
 const host = process.env.API_HOST || '127.0.0.1';
-app.listen(port, host, () => console.log(`Quality Fix Analytics em http://${host}:${port}`));
+app.listen(port, host, (err) => {
+  if (err) {
+    console.error(`Não foi possível iniciar em ${host}:${port}: ${err.message}`);
+    process.exit(1);
+  }
+  console.log(`Quality Fix Analytics em http://${host}:${port}`);
+});

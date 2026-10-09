@@ -105,6 +105,9 @@
   .topbar-title{ font-size:19px; font-weight:800; letter-spacing:-0.01em; }
   .topbar-desc{ font-size:12.5px; color:var(--ink-muted); margin-top:2px; }
   .topbar-right{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .period-pills{ display:flex; gap:4px; background:var(--surface-2); padding:3px; border-radius:10px; border:1px solid var(--border); flex-wrap:wrap; }
+  .period-pill{ border:none; background:transparent; padding:6px 12px; border-radius:8px; font-size:12.5px; font-weight:600; color:var(--ink-secondary); cursor:pointer; }
+  .period-pill.active{ background:var(--surface-1); color:var(--ink-primary); box-shadow:var(--shadow); }
   .live-chip{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-muted); }
   .live-dot{ width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 0 3px var(--good-bg); }
   .refresh-btn{
@@ -250,6 +253,7 @@
         <div class="topbar-desc" id="topbar-desc">Receita faturada, evolução diária e composição por região e divisão</div>
       </div>
       <div class="topbar-right">
+        <div class="period-pills" id="period-pills"></div>
         <div class="live-chip" id="live-chip"><span class="live-dot"></span><span id="live-text">—</span></div>
         <button class="refresh-btn" id="refresh-btn">↻ Nova amostra</button>
       </div>
@@ -1049,26 +1053,42 @@ function tableCard({title, subtitle, columns, rows, note}){
 }
 
 /* ---------------------------------------------------------------- state + filtering */
-let currentPeriod = 30;
 let currentPane = 'faturamento';
-// Filtro de data fixo: do último dia do mês passado (fechamento) até hoje.
-function ultimoDiaMesAnterior(d){ return new Date(d.getFullYear(), d.getMonth(), 0); }
+// Filtro de data: mês vigente (dia 1 até hoje) ou um mês anterior fechado (dia 1 até o último dia).
+const MESES_NAVEGAVEIS = 4;
+let mesOffset = 0;
 function mesmoDiaMesAnterior(d){
   const t = new Date(d.getFullYear(), d.getMonth()-1, 1);
   t.setDate(Math.min(d.getDate(), daysInMonth(t)));
   return t;
 }
-function inicioJanela(){ return ultimoDiaMesAnterior(HOJE); }
-function diasJanela(){ return dayOffset(inicioJanela())+1; }
-function rotuloJanela(){ return fmtDateShort(inicioJanela())+' → '+fmtDateShort(HOJE); }
+function inicioJanela(){ return new Date(HOJE.getFullYear(), HOJE.getMonth()-mesOffset, 1); }
+function fimJanela(){ return mesOffset===0 ? HOJE : endOfMonth(inicioJanela()); }
+function diasJanela(){ return Math.round((fimJanela()-inicioJanela())/86400000)+1; }
+function rotuloJanela(){ return fmtDateShort(inicioJanela())+' → '+fmtDateShort(fimJanela()); }
+function emitidoNaJanela(p){ return p.dataEmissao>=inicioJanela() && p.dataEmissao<=fimJanela(); }
+function rotuloMes(d){ return MON[d.getMonth()]+'/'+String(d.getFullYear()).slice(2); }
 
-function monthSelector(root){
-  const ini = inicioJanela();
+function montarFiltroMes(){
+  const box = document.getElementById('period-pills');
+  box.innerHTML = '';
+  for(let o=MESES_NAVEGAVEIS; o>=0; o--){
+    const m = new Date(HOJE.getFullYear(), HOJE.getMonth()-o, 1);
+    const btn = document.createElement('button');
+    btn.className = 'period-pill'+(o===mesOffset?' active':'');
+    btn.textContent = rotuloMes(m)+(o===0?' (atual)':'');
+    btn.addEventListener('click', ()=>{ mesOffset=o; montarFiltroMes(); renderAllPanes(); selectPane(currentPane); });
+    box.appendChild(btn);
+  }
+}
+
+function chipPeriodo(root){
+  const ini = inicioJanela(), fim = fimJanela();
   const chip = document.createElement('div');
   chip.className = 'live-chip';
-  chip.innerHTML = `<span class="live-dot" style="background:var(--good)"></span><span>Período fixo: último fechamento (${fmtDateShort(ini)}) até hoje (${fmtDateShort(HOJE)})</span>`;
+  chip.innerHTML = `<span class="live-dot" style="background:${mesOffset===0?'var(--warning)':'var(--good)'}"></span><span>${mesOffset===0?'Mês em andamento':'Mês fechado'} · ${fmtDateShort(ini)} → ${fmtDateShort(fim)}</span>`;
   root.appendChild(chip);
-  return {refMonthStart: ini, refEnd: HOJE, totalDiasMes: daysInMonth(HOJE), diasDecorridos: diasJanela()};
+  return {refMonthStart: ini, refEnd: fim, totalDiasMes: daysInMonth(ini), diasDecorridos: diasJanela()};
 }
 
 
@@ -1083,10 +1103,10 @@ const MSG_MOTIVO = 'Indisponível nas views atuais: nenhuma das 3 views traz o m
 
 /* ---------------------------------------------------------------- pane: faturamento */
 function renderFaturamento(root){
-  const {refMonthStart, refEnd, totalDiasMes, diasDecorridos} = monthSelector(root);
+  const {refMonthStart, refEnd, totalDiasMes, diasDecorridos} = chipPeriodo(root);
 
-  const prevMonthStart = ultimoDiaMesAnterior(refMonthStart);
-  const prevEnd = mesmoDiaMesAnterior(HOJE);
+  const prevMonthStart = new Date(refMonthStart.getFullYear(), refMonthStart.getMonth()-1, 1);
+  const prevEnd = mesOffset===0 ? mesmoDiaMesAnterior(HOJE) : endOfMonth(prevMonthStart);
 
   const ped = PEDIDOS.filter(p=>p.situacao==='FATURADO' && p.dataFat>=refMonthStart && p.dataFat<=refEnd);
   const pedAnt = PEDIDOS.filter(p=>p.situacao==='FATURADO' && p.dataFat>=prevMonthStart && p.dataFat<=prevEnd);
@@ -1102,16 +1122,25 @@ function renderFaturamento(root){
 
   const kpis = document.createElement('div'); kpis.className='kpi-row';
 
-  const hojePed = PEDIDOS.filter(p=>p.offsetFat===0 && p.situacao==='FATURADO');
-  const faturamentoHoje = hojePed.reduce((s,p)=>s+p.valorTotal,0);
-  const last14 = [];
-  for(let o=13;o>=0;o--){ last14.push(PEDIDOS.filter(p=>p.offsetFat===o && p.situacao==='FATURADO').reduce((s,p)=>s+p.valorTotal,0)); }
-  kpis.appendChild(statTile({label:'Faturamento hoje', value:fmtBRL(faturamentoHoje), sub: hojePed.length+' pedidos faturados', sparkValues:last14, sparkColor:'var(--s1)'}));
+  if(mesOffset===0){
+    const hojePed = PEDIDOS.filter(p=>p.offsetFat===0 && p.situacao==='FATURADO');
+    const faturamentoHoje = hojePed.reduce((s,p)=>s+p.valorTotal,0);
+    const last14 = [];
+    for(let o=13;o>=0;o--){ last14.push(PEDIDOS.filter(p=>p.offsetFat===o && p.situacao==='FATURADO').reduce((s,p)=>s+p.valorTotal,0)); }
+    kpis.appendChild(statTile({label:'Faturamento hoje', value:fmtBRL(faturamentoHoje), sub: hojePed.length+' pedidos faturados', sparkValues:last14, sparkColor:'var(--s1)'}));
+  } else {
+    const porDia = {};
+    ped.forEach(p=>{ const k=p.dataFat.getTime(); porDia[k]=(porDia[k]||0)+p.valorTotal; });
+    let melhorDia=null, melhorValor=-1;
+    Object.entries(porDia).forEach(([k,v])=>{ if(v>melhorValor){ melhorValor=v; melhorDia=new Date(+k); } });
+    kpis.appendChild(statTile({label:'Melhor dia do mês', value: melhorDia? fmtBRL(melhorValor):'—', sub: melhorDia? fmtDateFull(melhorDia) : 'sem faturamento no mês'}));
+  }
 
   kpis.appendChild(statTile({label:'Faturamento no período', value:fmtBRL(totalAtual),
     deltaText: temComparativo? (variacao>=0?'↑ ':'↓ ')+pct(Math.abs(variacao),1) : 'sem comparativo',
     tone: temComparativo? (variacao>=0?'good':'critical') : 'neutral',
-    sub: temComparativo? 'vs. mesmo período do mês anterior: '+fmtBRL(totalAnterior) : 'mês anterior sem dados na amostra'}));
+    sub: (temComparativo? 'vs. mesmo período do mês anterior: '+fmtBRL(totalAnterior) : 'mês anterior sem dados na amostra')
+      + (DADOS_REAIS ? ' · inclui IPI de '+fmtBRL(ped.reduce((s,p)=>s+(p.ipi||0),0))+' e ICMS ST de '+fmtBRL(ped.reduce((s,p)=>s+(p.icmsSt||0),0)) : '')}));
 
   if(temMeta){
     kpis.appendChild(statTile({label:'Faturamento vs Meta', value:fmtBRL(totalAtual),
@@ -1129,9 +1158,9 @@ function renderFaturamento(root){
   const grid = document.createElement('div'); grid.className='grid-2';
 
   const serieDiaria = [];
-  for(let o=diasDecorridos-1; o>=0; o--){
-    const day = addDays(HOJE,-o);
-    const val = ped.filter(p=>p.offsetFat===o).reduce((s,p)=>s+p.valorTotal,0);
+  for(let i=0; i<diasDecorridos; i++){
+    const day = addDays(refMonthStart, i);
+    const val = ped.filter(p=>p.dataFat.getTime()===day.getTime()).reduce((s,p)=>s+p.valorTotal,0);
     serieDiaria.push({x:day, y:val});
   }
   const metaDiaria = temMeta ? metaMensal/totalDiasMes : null;
@@ -1197,7 +1226,7 @@ function renderFaturamento(root){
 
 /* ---------------------------------------------------------------- pane: pedidos */
 function renderPedidos(root){
-  const {refMonthStart, refEnd, diasDecorridos} = monthSelector(root);
+  const {refMonthStart, refEnd, diasDecorridos} = chipPeriodo(root);
 
   const ped = PEDIDOS.filter(p=>p.dataEmissao>=refMonthStart && p.dataEmissao<=refEnd);
   const totalCotacoes = ped.length; // todo pedido nasce como cotação
@@ -1206,9 +1235,18 @@ function renderPedidos(root){
 
   const kpis = document.createElement('div'); kpis.className='kpi-row';
 
-  const hojeFaturados = PEDIDOS.filter(p=>p.offsetFat===0 && p.situacao==='FATURADO');
-  const valorHoje = hojeFaturados.reduce((s,p)=>s+p.valorTotal,0);
-  kpis.appendChild(statTile({label:'Pedidos do dia', value:fmtNum(hojeFaturados.length), sub:'faturados hoje · '+fmtBRL(valorHoje)}));
+  if(mesOffset===0){
+    const hojeFaturados = PEDIDOS.filter(p=>p.offsetFat===0 && p.situacao==='FATURADO');
+    const valorHoje = hojeFaturados.reduce((s,p)=>s+p.valorTotal,0);
+    kpis.appendChild(statTile({label:'Pedidos do dia', value:fmtNum(hojeFaturados.length), sub:'faturados hoje · '+fmtBRL(valorHoje)}));
+  } else {
+    const porDia = {};
+    ped.filter(p=>p.situacao==='FATURADO').forEach(p=>{ const k=p.dataEmissao.getDate(); porDia[k]=(porDia[k]||0)+1; });
+    let diaPico=null, picoCount=-1;
+    Object.entries(porDia).forEach(([k,v])=>{ if(v>picoCount){ picoCount=v; diaPico=+k; } });
+    kpis.appendChild(statTile({label:'Dia de pico', value: diaPico? picoCount+' pedidos':'—',
+      sub: diaPico? fmtDateFull(new Date(refMonthStart.getFullYear(),refMonthStart.getMonth(),diaPico)) : 'sem faturamento no mês'}));
+  }
 
   kpis.appendChild(statTile({label:'Pedidos no período', value:fmtNum(totalCotacoes), sub: rotuloJanela()+' · '+diasDecorridos+' dias'}));
   kpis.appendChild(statTile({label:'Faturados', value:fmtNum(faturados), sub:pct(faturados/(totalCotacoes||1),1)+' do total'}));
@@ -1218,9 +1256,9 @@ function renderPedidos(root){
   root.appendChild(kpis);
 
   const dailyItems = [];
-  for(let o=diasDecorridos-1; o>=0; o--){
-    const day = addDays(HOJE,-o);
-    const doDia = ped.filter(p=>p.offset===o);
+  for(let i=0; i<diasDecorridos; i++){
+    const day = addDays(refMonthStart, i);
+    const doDia = ped.filter(p=>p.dataEmissao.getTime()===day.getTime());
     const confirmadosDia = doDia.filter(p=>p.situacao==='LIBERADO'||p.situacao==='FATURADO').length;
     dailyItems.push({label:fmtDateShort(day), cotacoes:doDia.length, pedidos:confirmadosDia});
   }
@@ -1261,7 +1299,7 @@ function renderPedidos(root){
 
 /* ---------------------------------------------------------------- pane: vendedor */
 function renderVendedor(root){
-  const {refMonthStart, refEnd} = monthSelector(root);
+  const {refMonthStart, refEnd} = chipPeriodo(root);
 
   const ehInterno = p=> VENDEDORES_INTERNOS.some(v=>v.id===p.vendedor.id);
   const ped = PEDIDOS.filter(p=>p.situacao!=='CANCELADO' && p.dataEmissao>=refMonthStart && p.dataEmissao<=refEnd && ehInterno(p));
@@ -1351,8 +1389,8 @@ function renderVendedor(root){
 
 /* ---------------------------------------------------------------- pane: cotações */
 function renderCotacoes(root){
-  const dias = currentPeriod;
-  const emitidas = PEDIDOS.filter(p=>p.offset<dias); // todo pedido nasce como cotação
+  chipPeriodo(root);
+  const emitidas = PEDIDOS.filter(emitidoNaJanela); // todo pedido nasce como cotação
   const pendentes = emitidas.filter(p=>p.temCotacao);
   const valorPendente = pendentes.reduce((s,p)=>s+p.valorTotal,0);
   const diasAberto = pendentes.map(p=>p.offset);
@@ -1451,11 +1489,11 @@ function renderCotacoes(root){
 
 /* ---------------------------------------------------------------- pane: entregas */
 function renderEntregas(root){
-  const dias = currentPeriod;
-  const pendentes = PEDIDOS.filter(p=>p.emAndamento && p.offset<dias);
+  chipPeriodo(root);
+  const pendentes = PEDIDOS.filter(p=>p.emAndamento && emitidoNaJanela(p));
   const atrasadas = pendentes.filter(p=>p.atrasada);
   const emTransito = pendentes.filter(p=>p.situacaoAcomp==='EM TRANSITO').length;
-  const comTempo = PEDIDOS.filter(p=>p.offset<dias && p.tempoEntrega!=null && p.situacao!=='CANCELADO');
+  const comTempo = PEDIDOS.filter(p=>emitidoNaJanela(p) && p.tempoEntrega!=null && p.situacao!=='CANCELADO');
   const prazoMedio = comTempo.length? comTempo.reduce((s,p)=>s+p.tempoEntrega,0)/comTempo.length : 0;
 
   const kpis = document.createElement('div'); kpis.className='kpi-row';
@@ -1533,12 +1571,12 @@ function statsClientes(){
 }
 
 function renderClientes(root){
-  const dias = currentPeriod;
+  chipPeriodo(root);
   const stats = statsClientes();
   const inativos = CLIENTES.filter(c=>c.situacao==='Inativo');
   const total = CLIENTES.length;
 
-  const inativadosPeriodo = inativos.filter(c=>dayOffset(c.dataAlteracao)<dias).length;
+  const inativadosPeriodo = inativos.filter(c=>c.dataAlteracao>=inicioJanela() && c.dataAlteracao<=fimJanela()).length;
   const fatInativos = inativos.map(c=>({c, fat: stats[c.id].faturamentoTotal, dias: stats[c.id].ultimoOffset}));
   const faturamentoPerdido = fatInativos.reduce((s,x)=>s+x.fat,0);
   const temposComoCliente = inativos.map(c=> Math.round((c.dataAlteracao-c.dataCadastro)/86400000));
@@ -1550,7 +1588,7 @@ function renderClientes(root){
     sub: DADOS_REAIS ? 'compraram nos últimos '+REGRAS.janelaInativosMeses+' meses e estão '+REGRAS.diasParaInativar+'+ dias sem pedido' : null}));
   kpis.appendChild(statTile({label:'Faturamento histórico perdido', value:fmtBRL(faturamentoPerdido), sub:'soma do que já compraram antes de inativar'}));
   kpis.appendChild(statTile({label:'Inativados no período', value:fmtNum(inativadosPeriodo),
-    deltaText: inativadosPeriodo>0?'atenção':'nenhum', tone: inativadosPeriodo>0?'critical':'good', sub: 'últimos '+dias+' dias'}));
+    deltaText: inativadosPeriodo>0?'atenção':'nenhum', tone: inativadosPeriodo>0?'critical':'good', sub: rotuloJanela()}));
   kpis.appendChild(statTile({label:'Tempo médio até inativar', value:tempoMedioComoCliente.toFixed(0)+' dias', sub:'do cadastro até a inativação'}));
   root.appendChild(kpis);
 
@@ -1648,11 +1686,11 @@ function renderClientes(root){
 
 /* ---------------------------------------------------------------- nav / lifecycle */
 const PANES = {
-  faturamento:{ title:'Faturamento', desc:'Receita faturada do último fechamento até hoje, evolução diária e composição por região, produto e divisão', render:renderFaturamento },
-  pedidos:{ title:'Pedidos', desc:'Cotações, conversão e funil comercial do último fechamento até hoje', render:renderPedidos },
-  vendedor:{ title:'Vendedor', desc:'Ranking de faturamento e pedidos da equipe interna de vendas, do último fechamento até hoje', render:renderVendedor },
-  cotacoes:{ title:'Cotações', desc:'Propostas aguardando aprovação do cliente, emitidas do último fechamento até hoje', render:renderCotacoes },
-  entregas:{ title:'Entregas', desc:'Pedidos em trânsito logístico e riscos de atraso, emitidos do último fechamento até hoje', render:renderEntregas },
+  faturamento:{ title:'Faturamento', desc:'Receita faturada do mês selecionado, evolução diária e composição por região, produto e divisão', render:renderFaturamento },
+  pedidos:{ title:'Pedidos', desc:'Cotações, conversão e funil comercial do mês selecionado', render:renderPedidos },
+  vendedor:{ title:'Vendedor', desc:'Ranking de faturamento e pedidos da equipe interna de vendas, do mês selecionado', render:renderVendedor },
+  cotacoes:{ title:'Cotações', desc:'Propostas aguardando aprovação do cliente, emitidas do mês selecionado', render:renderCotacoes },
+  entregas:{ title:'Entregas', desc:'Pedidos em trânsito logístico e riscos de atraso, emitidos do mês selecionado', render:renderEntregas },
   clientes:{ title:'Clientes Inativos', desc:'Base perdida: quem inativou, quanto faturava e por onde priorizar a reconquista', render:renderClientes },
 };
 
@@ -1733,7 +1771,7 @@ function aplicarDadosReais(d){
     const saida = toDate(r.dataSaida);
     return {
       numero:r.numero, dataEmissao, offset:dayOffset(dataEmissao), dataFat, offsetFat:dayOffset(dataFat),
-      valorTotal:r.valor, cliente:clienteDe(r.cliente), vendedor:vendPorNome.get(r.vendedor),
+      valorTotal:r.valor, ipi:r.ipi||0, icmsSt:r.icmsSt||0,cliente:clienteDe(r.cliente), vendedor:vendPorNome.get(r.vendedor),
       transportadora:r.transportadora||'—', motorista:r.motorista||null, responsavel:r.responsavel||'—',
       situacao:r.situacao, situacaoAcomp:r.acomp, temCotacao:r.situacao==='EMITIDO', motivoPendencia:null,
       prazoEntrega:null, dataLimite, diasParaLimite, emAndamento, atrasada: emAndamento && diasParaLimite<0,
@@ -1741,7 +1779,6 @@ function aplicarDadosReais(d){
       produto:null, divisao:null,
     };
   });
-  currentPeriod = diasJanela();
   deriveStatusClientes();
 }
 
@@ -1767,7 +1804,7 @@ function descreverFonte(){
   if(DADOS_REAIS){
     schemaBtn.textContent = 'Dados reais do ERP (VW_PEDIDOS, VW_CLIENTES, VW_PRODUTOS). Clique para ver as regras e limitações.';
     schemaPanel.innerHTML = `
-      <div><code>VW_PEDIDOS</code> → só pedidos (TIPO 1). Faturado = NF emitida + IDT_FATURAMENTO=1, contado pela data da NF. Valor do pedido deduplicado (a view tem 1 linha por item).</div>
+      <div><code>VW_PEDIDOS</code> → só pedidos (TIPO 1). Faturado = NF emitida + IDT_FATURAMENTO=1, contado pela data da NF. Valor = total dos itens + IPI (VALOR_IPI) + ICMS ST (VALOR_ICMS_SBS); a view tem 1 linha por item, então deduplico por pedido.</div>
       <div style="margin-top:6px;"><code>VW_CLIENTES</code> → cadastro ligado ao pedido pelo nome do cliente; UF e região derivadas do estado. Inativo = ${REGRAS.diasParaInativar}+ dias sem pedido (só quem comprou nos últimos ${REGRAS.janelaInativosMeses} meses).</div>
       <div style="margin-top:6px;">Atraso de entrega = em andamento há mais de ${REGRAS.diasLimiteEntrega} dias desde a emissão (as views não trazem prazo).</div>
       <div style="margin-top:6px;">Indisponível nas views: faturamento por produto/divisão e motivo da pendência.</div>`;
@@ -1789,7 +1826,7 @@ refreshBtn.addEventListener('click', async ()=>{
     const r = await carregarDadosReais(true);
     refreshBtn.disabled = false; refreshBtn.textContent = '↻ Atualizar';
     mostrarBanner(r.ok? '' : 'Não foi possível atualizar os dados do ERP'+(r.erro? ' ('+r.erro+')':'')+'. Mantendo a última carga.');
-    if(r.ok){ updateBadges(); renderAllPanes(); selectPane(currentPane); }
+    if(r.ok){ montarFiltroMes(); updateBadges(); renderAllPanes(); selectPane(currentPane); }
     return;
   }
   rand = mulberry32(Date.now()>>>0);
@@ -1805,7 +1842,7 @@ refreshBtn.addEventListener('click', async ()=>{
   const r = await carregarDadosReais(false);
   loading.style.display = 'none';
   if(!r.ok && r.erro) mostrarBanner('Não foi possível carregar os dados do ERP ('+r.erro+'). Exibindo dados de exemplo.');
-  currentPeriod = diasJanela();
+  montarFiltroMes();
   refreshBtn.textContent = DADOS_REAIS ? '↻ Atualizar' : '↻ Nova amostra';
   descreverFonte();
   updateBadges();
